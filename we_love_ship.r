@@ -34,8 +34,43 @@ source("../../r_project/map.key.r")
 # https://stackoverflow.com/questions/47749078/how-to-put-a-geom-sf-produced-map-on-top-of-a-ggmap-produced-raster
 # EPSG by google can be obtained from below.
 # https://colauttilab.github.io/EcologyTutorials/mapping.html
-# obtain a map from Google
-# Internet connection and Google API are necessary.
+# ---- ggmap.bbox.fun ----
+ggmap.bbox.fun <- function(sat.map) {
+  if (!inherits(sat.map, "ggmap")) stop("map must be a ggmap object")
+  # Extract the bounding box (in lat/lon) from the ggmap to a numeric vector,
+  # and set the names to what sf::st_bbox expects:
+  map_bbox <- setNames(unlist(attr(sat.map,
+                                   "bb"
+  )
+  ),
+  c("ymin",
+    "xmin",
+    "ymax",
+    "xmax"
+  )
+  )
+  # Convert the bbox to an sf polygon, transform it to 3857,
+  # and convert back to a bbox (convoluted, but it works)
+  # st_as_sfc requires CRS. Google maps obtained from get_map() has no CRS info.
+  # We need to set the temporal CRS first. Then we transform the temporal CRS
+  # into real one (3857).
+  bbox.3857 <-
+    map_bbox %>%
+    st_bbox(crs = 4326) %>%
+    st_as_sfc %>%
+    st_transform(crs = 3857) %>%
+    st_bbox()
+  # Overwrite the bbox of the ggmap object with the transformed coordinates
+  # Names below can be obtained using str(map) function
+  attr(sat.map, "bb")$ll.lat <- bbox.3857["ymin"]
+  attr(sat.map, "bb")$ll.lon <- bbox.3857["xmin"]
+  attr(sat.map, "bb")$ur.lat <- bbox.3857["ymax"]
+  attr(sat.map, "bb")$ur.lon <- bbox.3857["xmax"]
+  sat.map
+}
+#
+## --- END ---
+
 # ---- make.map ----
 # make an original satellite map
 sat.map <-
@@ -88,7 +123,7 @@ map.label <-
 #
 # make a ggplot-object map from the obtained map and
 # overlay the grid on the map
-#
+sat.map <- ggmap.bbox.fun(sat.map)#
 # road map
 road.map.bare <- 
   ggmap(road.map)
