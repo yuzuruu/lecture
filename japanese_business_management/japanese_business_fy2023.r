@@ -208,16 +208,14 @@ poll_rate <-
     legend.position = "bottom"
   )
 
-# ----- sacatter.plot -----
+# ----- scatter.plot -----
 
 scatter_iris <- 
   iris %>% 
   ggplot(aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
   geom_point()
 
-
-
-hoge <- 
+scatter_iris_revised <- 
   scatter_iris +
   scale_color_okabeito() +
   theme_classic() +
