@@ -12,6 +12,7 @@
 # 
 
 # ----- read.library -----
+# LOAD the libraries whenever you start R.
 library(tidyverse)
 library(viridis)
 library(khroma)
@@ -186,41 +187,81 @@ ggsave(
   units = "mm"
 )
 
-# ----- poll.map -----
-map <- 
-  sf::read_sf(
-    "../JPN_adm/JPN_adm1.shp",
-    crs = "+proj=longlat +datum=WGS84"
-    )
-poll <- readxl::read_excel("../poll.xlsx")
-poll_map <- 
-  poll %>% 
-  dplyr::left_join(map, by = c("prefecture" = "NAME_1")
-  )
+# # ----- poll.map -----
+# map <- 
+#   sf::read_sf(
+#     "../JPN_adm/JPN_adm1.shp",
+#     crs = "+proj=longlat +datum=WGS84"
+#     )
+# poll <- readxl::read_excel("../poll.xlsx")
+# poll_map <- 
+#   poll %>% 
+#   dplyr::left_join(map, by = c("prefecture" = "NAME_1")
+#   )
+# 
+# poll_rate <- 
+#   poll_map %>% 
+#   ggplot(aes(fill = female)) + 
+#   geom_sf(aes(geometry = geometry)) + 
+#   labs(fill = "Rate (%)") +
+#   theme_void() +
+#   theme(
+#     legend.position = "bottom"
+#   )
 
-poll_rate <- 
-  poll_map %>% 
-  ggplot(aes(fill = female)) + 
-  geom_sf(aes(geometry = geometry)) + 
-  labs(fill = "Rate (%)") +
-  theme_void() +
-  theme(
-    legend.position = "bottom"
-  )
-
-# ----- sacatter.plot -----
-
+# ----- scatter.plot -----
+# 
 scatter_iris <- 
   iris %>% 
   ggplot(aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
   geom_point()
 
-
-
-hoge <- 
+scatter_iris_revised <- 
   scatter_iris +
   scale_color_okabeito() +
   theme_classic() +
   theme(
     legend.position = "bottom"
   )
+
+# when you have no idea all about R, please refer to the following website.
+# https://r-graphics.org/
+# read data
+# We have upload the MSExcel file. 
+# Before use, download the data from MANABA and read it.
+ssdse <- 
+  readxl::read_excel(
+    "ssdse.xlsx",
+    sheet = "ssdse"
+  ) 
+# draw a scatter plot
+scatter_ssdse <- 
+  # pass the data to ggplot
+  ssdse %>% 
+  ggplot2::ggplot(
+    aes(
+      x = log(total_population),
+      y = log(n_of_enterprise)
+    )
+  ) +
+  geom_point() + 
+  labs(
+    x = "Total population (Unit: persons, log Trans.)",
+    y = "N. of enterprise (log Trans.)"
+  ) +
+  # fix range of axes for convenience
+  # adjust the range in accordance with data
+  xlim(13,17) +
+  ylim(10,14) +
+  # add labels by prefecture
+  geom_text_repel(aes(label = prefecture), size = 3) +
+  theme_classic()
+# 
+# save the line plot
+ggsave(
+  "scatter_ssdse.pdf",
+  plot = scatter_ssdse,
+  width = 150,
+  height = 150,
+  units = "mm"
+)
