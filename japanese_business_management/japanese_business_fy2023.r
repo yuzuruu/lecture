@@ -1,5 +1,5 @@
 ##################################################################
-# Introduction to R and Rstudio
+# Introduction to R and Rstudio for "Japanese Business"
 # 11th. May 2023
 # Yuzuru Utsunomiya, Ph. D.
 # 
@@ -10,15 +10,17 @@
 # 2. add ? and implement
 # e.g.) ?dplyr::mutate
 # 
-
+##################################################################
+# 
 # ----- read.library -----
 # LOAD the libraries whenever you start R.
 library(tidyverse)
 library(viridis)
 library(khroma)
-library(estatapi)
+library(GGally)
+# library(estatapi)
 # library(sf)
-library(ggrepel)
+# library(ggrepel)
 
 # 
 # ----- line.population -----
@@ -360,3 +362,65 @@ ggsave(
   height = 150,
   units = "mm"
 )  
+# 
+# ----- doing.business.and.gdp -----
+# read data and combine
+doing_business_longer <- 
+  doing_business %>% 
+  tidyr::pivot_longer(
+    cols = c(-economy, -region, -income_group, -year),
+    names_to = "perspective",
+    values_to = "score"
+  ) %>% 
+  dplyr::left_join(
+    readxl::read_excel("gdp.xlsx", sheet = "gdp"),
+    by = c("economy", "year")
+  ) %>% 
+  dplyr::mutate(
+    dplyr::across(
+      where(is.character), as.factor
+    )
+  )
+# make a summary table
+doing_business_longer_summary <- 
+  doing_business_longer %>% 
+  dplyr::group_by(perspective, year) %>% 
+  dplyr::summarise(
+    n = n(),
+    Min. = min(score),
+    Mean = mean(score),
+    Median = median(score),
+    Max. = max(score),
+    SD = sd(score)
+  )
+# draw scatter plots systematically
+doing_business_longer_scatter <- 
+  doing_business_longer %>% 
+  group_by(perspective) %>% 
+  nest() %>% 
+  dplyr::mutate(
+    scatter_plot = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = ., 
+          aes(
+            x = score,
+            y = log(GDP),
+            shape = factor(year),
+            color = factor(year)
+          ) 
+        ) +
+        geom_point() +
+        # geom_smooth(method = "lm") +
+        scale_color_okabeito() +
+        labs(
+          x = perspective, 
+          title = perspective
+          ) +
+        theme_classic() +
+        theme(
+          legend.position = "none"
+        )
+    )
+  )
