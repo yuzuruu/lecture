@@ -17,7 +17,7 @@
 library(tidyverse)
 library(viridis)
 library(khroma)
-library(GGally)
+# library(GGally)
 # library(estatapi)
 # library(sf)
 # library(ggrepel)
@@ -364,18 +364,23 @@ ggsave(
 )  
 # 
 # ----- doing.business.and.gdp -----
-# read data and combine
+# read GDP data and combine together
 doing_business_longer <- 
   doing_business %>% 
   tidyr::pivot_longer(
+    # remove unnecessary variables using "-"
     cols = c(-economy, -region, -income_group, -year),
+    # provide a name for the new variable containing factors
     names_to = "perspective",
+    # provide a name for the new variable containing numbers
     values_to = "score"
   ) %>% 
+  # join the data frame with GDP data
   dplyr::left_join(
     readxl::read_excel("gdp.xlsx", sheet = "gdp"),
     by = c("economy", "year")
   ) %>% 
+  # switch data form into factor is a variable holds "character".
   dplyr::mutate(
     dplyr::across(
       where(is.character), as.factor
@@ -395,6 +400,8 @@ doing_business_longer_summary <-
   )
 # draw scatter plots systematically
 doing_business_longer_scatter <- 
+  # in detail, please refer to a cheat sheet of purrr() library
+  # Help -> Cheat sheets -> Data manipulation with purrr (pdf)
   doing_business_longer %>% 
   group_by(perspective) %>% 
   nest() %>% 
@@ -424,3 +431,7 @@ doing_business_longer_scatter <-
         )
     )
   )
+# END
+
+
+
