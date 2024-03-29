@@ -1,5 +1,5 @@
 ##################################################################
-# Introduction to R and Rstudio
+# Introduction to R and Rstudio for "Japanese Business"
 # 11th. May 2023
 # Yuzuru Utsunomiya, Ph. D.
 # 
@@ -10,14 +10,18 @@
 # 2. add ? and implement
 # e.g.) ?dplyr::mutate
 # 
-
+##################################################################
+# 
 # ----- read.library -----
 # LOAD the libraries whenever you start R.
 library(tidyverse)
 library(viridis)
 library(khroma)
-library(estatapi)
-library(sf)
+# library(GGally)
+# library(estatapi)
+# library(sf)
+# library(ggrepel)
+
 # 
 # ----- line.population -----
 # read data and make it tidy
@@ -265,3 +269,169 @@ ggsave(
   height = 150,
   units = "mm"
 )
+
+
+scatter_assignment <- 
+  # pass the data to ggplot
+  ssdse %>% 
+  ggplot2::ggplot(
+    aes(
+      x = log(income),
+      y = log(tfr)
+    )
+  ) +
+  geom_point(color = "blue") + 
+  labs(
+    x = "Income (Unit: JPY, log Trans.)",
+    y = "N. of Birth (Unit: persons, log Trans.)",
+    caption = "INSERT YOUR NAME HERE."
+  ) +
+  # fix range of axes for convenience
+  # adjust the range in accordance with data
+  # xlim(13,17) +
+  # ylim(10,14) +
+  # add labels by prefecture
+  geom_text_repel(aes(label = prefecture), size = 3) +
+  theme_classic()
+
+ggsave(
+  "scatter_assignment.pdf",
+  plot = scatter_assignment,
+  width = 150,
+  height = 150,
+  units = "mm"
+)
+# 
+# ----- doing.business -----
+# read data
+doing_business <- 
+  readxl::read_excel(
+    "doing_business_2015_2020.xlsx",
+    sheet = "selected"
+  ) %>% 
+  # transform character data to factor
+  dplyr::mutate(
+    dplyr::across(
+      where(is.character), as.factor
+    )
+  )
+# display columns' name for reference
+colnames(doing_business)
+# draw a scatter plot
+# https://stackoverflow.com/questions/27668266/dplyr-change-many-data-types
+doing_business_scatter <- 
+  doing_business %>% 
+  # add a variable to emphasize Japan
+  dplyr::mutate(
+    japanornot = ifelse(economy == "Japan", "Japan", "Others")) %>% 
+  # draw a figure
+  ggplot2::ggplot(
+    aes(
+      # set variables
+      x = Enforcing_contracts, 
+      y = Protecting_minority_investors
+      )
+  ) +
+  geom_point(
+    aes(
+      color = japanornot == "Japan", 
+      size = japanornot == "Japan",
+      shape = factor(year),
+      alpha = 0.2
+      )) +
+  scale_color_manual(values = c("grey","blue")) +
+  scale_size_manual(values = c(1,3)) +
+  # set limits of axes
+  # The indicators evidently distribute between 0 and 100.
+  xlim(0,100) +
+  ylim(0,100) + 
+  labs(
+    title = "INSERT APPROPRIATE TITLE", 
+    subtitle = "Shapes of points indicate year (2016-2020). \n Source: Doing business by World Bank", 
+    caption = "Your name"
+    ) +
+  theme_classic() +
+  theme(
+    legend.position = "none"
+  )
+# save the figure
+ggsave(
+  "doing_business_scatter.pdf",
+  plot = doing_business_scatter,
+  width = 150,
+  height = 150,
+  units = "mm"
+)  
+# 
+# ----- doing.business.and.gdp -----
+# read GDP data and combine together
+doing_business_longer <- 
+  doing_business %>% 
+  tidyr::pivot_longer(
+    # remove unnecessary variables using "-"
+    cols = c(-economy, -region, -income_group, -year),
+    # provide a name for the new variable containing factors
+    names_to = "perspective",
+    # provide a name for the new variable containing numbers
+    values_to = "score"
+  ) %>% 
+  # join the data frame with GDP data
+  dplyr::left_join(
+    readxl::read_excel("gdp.xlsx", sheet = "gdp"),
+    by = c("economy", "year")
+  ) %>% 
+  # switch data form into factor is a variable holds "character".
+  dplyr::mutate(
+    dplyr::across(
+      where(is.character), as.factor
+    )
+  )
+# make a summary table
+doing_business_longer_summary <- 
+  doing_business_longer %>% 
+  dplyr::group_by(perspective, year) %>% 
+  dplyr::summarise(
+    n = n(),
+    Min. = min(score),
+    Mean = mean(score),
+    Median = median(score),
+    Max. = max(score),
+    SD = sd(score)
+  )
+# draw scatter plots systematically
+doing_business_longer_scatter <- 
+  # in detail, please refer to a cheat sheet of purrr() library
+  # Help -> Cheat sheets -> Data manipulation with purrr (pdf)
+  doing_business_longer %>% 
+  group_by(perspective) %>% 
+  nest() %>% 
+  dplyr::mutate(
+    scatter_plot = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = ., 
+          aes(
+            x = score,
+            y = log(GDP),
+            shape = factor(year),
+            color = factor(year)
+          ) 
+        ) +
+        geom_point() +
+        # geom_smooth(method = "lm") +
+        scale_color_okabeito() +
+        labs(
+          x = perspective, 
+          title = perspective
+          ) +
+        theme_classic() +
+        theme(
+          legend.position = "none"
+        )
+    )
+  )
+# END
+
+
+
