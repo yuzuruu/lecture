@@ -1,0 +1,241 @@
+---
+title: "Statistical hypothesis testing"
+subtitle: "R workshop for E-4 members 4"
+author: "Yuzuru Utsunomiya"
+date: "`r Sys.time()`"
+output: 
+  ioslides_presentation:
+    css: ../css/slide.css
+    widescreen: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r include = FALSE}
+knitr::read_chunk("../rworkshop_code.R")
+```
+
+# Statistical test
+
+## Load libraries first
+```{r readlibraryandomitna, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+```
+
+
+## The most familiar method
+
++ Test is a procedure to distinguish whether observations are sampled by accident or not based on theory of probability.
++ Practically, it is employed to compare some statistics such as central tendencies (mean and median), variance, and others.
++ Controversies to be followed
+    - Type I error and Type II error ($\alpha$ and $\beta$)
+    - Meaning of $p$ value
+    - Effect size and power analysis
+
+## Story: Case of comparing 2 groups' means
+
+1. We'd like to compare *mean* by group: whether does a significant (large / small enough) difference between the means exist?
+2. The means vary... 
+3. We compute a difference of the means while standardizing with SE (t statistics).
+4. Whether the computed statistics is significantly large / small enough (different) at a certain level (normally 5% or below), we decide whether the difference exists.
+
+## True number may be there in somewhere
++ We cannot observe the true value $\rightarrow$ We need to estimate the number from sample.
+    - Sample mean of $x$: $m_{x}$ (or $\bar{x}$)
+    - Population mean of $x$: $\mu_{x}$
++ Most welcome case: $m_{x} = \mu_{x}$
++ To estimate the $\mu$, we collect samples.
+
+## The observations distribute following a certain distribution...
+
++ Suppose two groups including some observation; $X$ and $Y$.
++ This time, observations of both group are supposed to follow normal distributions with the same variance $\sigma^{2}$.
+    - $X \sim N(m_{x}, \sigma^{2})$
+    - $Y \sim N(m_{y}, \sigma^{2})$
+
+## Difference between the group $x$ and $y$
++ We denote the difference between mean of $m_x$ and mean of $m_y$, given
+
+$$
+d = m_{x} - m_{y}
+$$
+
+## $d$ also distributes following a normal distribution.
++ The $d$ also fluctuates. It follows a normal distribution.
+    - $d \sim N(\mu_{y}-\mu_{x}, 2\sigma^{2})$
++ The $d$ is affected by variance ($\sigma^{2}$).  
+    - So we'd control effect of variance to estimate the true $d$.
+
+## What's $d$?
+
+```{r two.density, include = TRUE, results = FALSE, warning = FALSE, message = FALSE, echo=FALSE}
+```
+
+```{r plot.normal.pair.d, include = TRUE, warning = FALSE, message = FALSE, echo=FALSE, fig.align='center'}
+```
+    
+## Using SE of $d$, we control (standardize) the effect.
++ The standardized $d$ (t statistics) is given
+
+$$
+t = \frac{m_{y}-m_{x}}{\sqrt{\frac{\sum_{i=1}^{n}(x_{i}-m_{x})^{2}+\sum_{i=1}^{n}(y_{i}-m_{y})^{2}}{(n-1)+(n-1)}\frac{1}{n}}}
+= \frac{m_{y}-m_{x}}{\underbrace{\frac{\sigma}{\sqrt{n}}}_{SE}}
+$$
+
+## The $t$ follows $t$ distribution.
++ Interpretation: When the $t$ would be larger / smaller enough, there seems to be significant difference between the group.
+    - The $t$ is available to approximate using normal distribution.
+    - When the $d$ is above 97.5% or below 2.5% of the distribution, let us regard the difference as significant.
+
+## 95% CI (Coefficient Intervals)
+```{r plot.density.95.paint, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE, fig.align='center'}
+```
+
+# Test in R
+
+## Procedure
+1. Check descriptive statistics and distribution
+2. test the difference between the group using **t.test** function.
+3. Interpret results of test
+```{r t.test, include = FALSE, results = FALSE, warning = FALSE, message = FALSE, echo=TRUE}
+```
+
+## Sample data
++ Artificially generated two datasets.
+    - $x \sim N(0, 1^{2})$  
+    - $y \sim N(1, 1^{2})$
++ N = 100 by group
+
+## Code: Generate datasets | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+
+```{r sample.ttest, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+x.sample <- rnorm(100, mean = 0, sd =1)
+y.sample <- rnorm(100, mean = 1, sd =1)
+df.x <- data.frame(sample = x.sample, 
+                   group = rep("x", 
+                               times = length(x.sample)))
+df.y <- data.frame(sample = y.sample, 
+                   group = rep("y", 
+                               times = length(x.sample)))
+df.xy <- as.tibble(rbind(df.x, df.y))  
+df.xy$group <- factor(df.xy$group) 
+```
+
+## Code: Compute descriptive statistics | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r sample.descriptive.statistics, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+xy.summary <- df.xy %>% group_by(group) %>% 
+  summarise(N = length(sample), 
+            Min. = min(sample), 
+            Mean = mean(sample), 
+            Median = median(sample), 
+            Max. = max(sample), 
+            SD = sd(sample), 
+            SE = sd(sample)/sqrt(length(sample))
+            )
+```
+
+
+## Check descriptive statistics | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r summary.table.ttest, include = TRUE, results = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+```
+
+## Code: Draw a density plot | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r densityplot.ttest, include = TRUE, results = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+density.xy <- df.xy %>% 
+  ggplot(aes(x=sample, colour = group, fill = group)) + 
+  geom_density(alpha = 0.3) + 
+  scale_x_continuous(limits = c(-4,4)) +
+  theme_bw() +
+  theme(axis.line = element_line(size=1, colour="black"),
+        legend.position = "bottom",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(), 
+        panel.background = element_blank(),
+        text=element_text(family="Tahoma")
+  )
+```
+
+## Check distributions | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r density.plot.ttest, include = TRUE, warning = FALSE, message = FALSE, echo=FALSE, fig.align='center'}
+```
+
+## t.test | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r t.test.results, include = TRUE, results = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+```
+
+## Notice
++ When a sample distribution does not follow a normal distribution, considering nonparametric tests may help.
+    - **wilcox.test**
++ The significant difference does not prove clinical (practical) difference.
+    - For interpretation, consider the results carefully in terms of your specialty.
++ To fix an appropriate sample size, refer to **effect size**.
+
+## Exercise | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
++ Using **sleep** data, do the test by group (group 1 and group 2).
++ Gossen, a founder of t-test, made the data when he implemented a medical efficiency test.
+```{r t.test.sleep, include = FALSE, results = FALSE, warning = FALSE, message = FALSE, echo=TRUE}
+```
+
+
+## Check descriptive statistics | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r summary.table.sleep, include = TRUE, results = TRUE, warning = FALSE, message = FALSE, echo=FALSE}
+```
+
+## Code: Computing descriptive statistics | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r sleep.ds, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+data(sleep)
+attach(sleep)
+sleep <- sleep %>% as.tibble(.)
+sleep.summary <- sleep %>% group_by(group) %>% 
+  summarise(N = length(extra),
+            Min. = min(extra),
+            Mean = mean(extra),
+            Median = median(extra),
+            Max. = max(extra),
+            SD = sd(extra),
+            SE = sd(extra)/sqrt(length(sample))
+            )
+
+```
+
+## Check distributions | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r density.plot.sleep, include = TRUE, warning = FALSE, message = FALSE, echo=FALSE, fig.align='center'}
+```
+
+## Code: Drawing density plots | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r sleep.density, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+density.sleep <- sleep %>% 
+  ggplot(aes(x=extra, colour = group, fill = group)) + 
+  geom_density(alpha = 0.3) + 
+  scale_x_continuous(limits = c(-4,10)) +
+  theme_bw() +
+  theme(axis.line = element_line(size=1, colour="black"),
+        legend.position = "bottom",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(), 
+        panel.background = element_blank(),
+        text=element_text(family="Tahoma")
+  )
+```
+
+## t.test | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r t.test.results.sleep, include = TRUE, results = TRUE, warning = FALSE, message = FALSE, echo=FALSE}
+```
+
+## Code: Drawing density plots | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r sleep.ttest.01, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+sleep.ttest.results <- sleep %>% 
+  t.test(extra ~ group, data = ., 
+         var.equal = TRUE, 
+         paired = FALSE)
+```
+
+## Code: Drawing density plots | Please write the code, save it (Ctrl+s), and run (select->Ctrl+Enter)
+```{r sleep.ttest.02, include = TRUE, warning = FALSE, message = FALSE, echo=TRUE}
+sleep.ttest.results
+```
+
+# Next Regression
