@@ -330,3 +330,200 @@ future::plan(multisession, workers = 16)
 # hoge$seniority_line
 # dev.off()
 
+
+junior <- 
+  readr::read_rds("./r_workshop/seniority_data_tutorial_college.rds")
+high <- 
+  readr::read_rds("./r_workshop/seniority_data_tutorial_high.rds")
+college <- 
+  readr::read_rds("./r_workshop/seniority_data_tutorial_college.rds")
+university <- 
+  readr::read_rds("./r_workshop/seniority_data_tutorial_university.rds")
+
+data_seniority <- 
+  junior %>% 
+  dplyr::bind_rows(high) %>% 
+  dplyr::bind_rows(college) %>% 
+  dplyr::bind_rows(university) 
+
+# filter
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school == "university"
+  )
+
+# filter with multiple variables
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school == "university" & gender == "female"
+  )
+
+
+# filter with multiple conditions
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school %in% c("university", "college")
+  )
+# 
+data_seniority_summary <- 
+  data_seniority %>% 
+  dplyr::filter(
+    school == "university"
+  ) %>% 
+  group_by(length_service, age_class) %>% 
+  summarise(
+    Mean = mean(value, na.rm = TRUE),
+    Median = median(value, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  )
+# 
+line_seniority_summary <- 
+  data_seniority_summary %>% 
+  ggplot2::ggplot(
+    aes(
+      x = length_service,
+      y = Median,
+      color = age_class,
+      group = age_class
+    )
+  ) +
+  geom_point() +
+  geom_line()
+# revise the initial line plot
+line_seniority_summary_revised <- 
+  line_seniority_summary + 
+  # scale_color_viridis(discrete = TRUE) +
+  scale_color_smoothrainbow(discrete = TRUE) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=2)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+# revise the initial line plot
+line_seniority_summary_revised <- 
+  line_seniority_summary + 
+  # scale_color_viridis(discrete = TRUE) +
+  scale_color_viridis(
+    option = "plasma",
+    direction = -1,
+    discrete = TRUE
+    ) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=2)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+# facet 
+data_seniority_summary_facet <- 
+  data_seniority %>% 
+  dplyr::group_by(school, length_service, age_class) %>% 
+  dplyr::summarise(
+    mean = mean(value, na.rm = TRUE),
+    median = median(value, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  ) %>% 
+  ungroup()
+# draw a figure
+line_seniority_summary_facet <- 
+  data_seniority_summary_facet %>% 
+  ggplot2::ggplot(
+    aes(
+      x = length_service,
+      y = median,
+      color = age_class,
+      group = age_class
+    )
+  ) +
+  geom_point() +
+  geom_line() + 
+  scale_color_smoothrainbow(discrete = TRUE) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=2)) +
+  facet_wrap(~ school, ncol = 2) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    strip.background = element_blank()
+  ) 
+# save
+ggsave(
+  "line_seniority_summary_facet.pdf",
+  plot = line_seniority_summary_facet,
+  width = 200,
+  height = 200,
+  units = "mm"
+)
+# Automated figure drawing using purrr::map() function
+line_seniority_summary_separated <- 
+  data_seniority %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  ) %>% 
+  dplyr::group_by(type, gender, size,school, year, industry) %>%
+  tidyr::nest() %>% 
+  dplyr::mutate(
+    figure = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = .,
+          aes(
+            x = length_service,
+            y = value,
+            color = age_class,
+            group = age_class,
+            na.rm = TRUE
+          )
+        ) +
+        geom_point() +
+        geom_line() + 
+        scale_color_smoothrainbow(discrete = TRUE) +
+        labs(
+          x = "Length of service (Unit: year)",
+          y = "Regular payment (Unit: 1,000JPY)",
+          color = "Age class",
+          title = paste(industry,"in", lubridate::year(year)),
+          subtitle = paste("(", gender, size, "persons", school, ")")
+        ) +
+        guides(color = guide_legend(nrow=2)) +
+        theme_classic() +
+        theme(
+          legend.position = "bottom",
+          strip.background = element_blank()
+        )
+    )
+  )
+
+# save the figure
+# WARNING
+# This process needs long computation period. 
+# TRY before RUN
+pdf("line_seniority_summary_separated.pdf")
+purrr::walk(line_seniority_summary_separated$figure, print)
+dev.off()
