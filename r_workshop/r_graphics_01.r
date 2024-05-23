@@ -519,11 +519,16 @@ line_seniority_summary_separated <-
         )
     )
   )
-
+# monitor a certain figure
+line_seniority_summary_separated$figure[[1]]
 # save the figure
 # WARNING
 # This process needs long computation period. 
 # TRY before RUN
 pdf("line_seniority_summary_separated.pdf")
-purrr::walk(line_seniority_summary_separated$figure, print)
+purrr::walk(
+  line_seniority_summary_separated$figure, 
+  print
+  )
 dev.off()
+
