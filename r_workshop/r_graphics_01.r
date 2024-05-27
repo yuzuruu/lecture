@@ -375,32 +375,6 @@ ggsave(
   height = 200,
   units = "mm"
 )
-# revise the initial line plot (part 2)
-line_seniority_summary_assignment <- 
-  line_seniority_summary + 
-  scale_color_viridis(
-    option = "plasma",
-    direction = -1,
-    discrete = TRUE
-    ) +
-  labs(
-    x = "Length of service (Unit: year)",
-    y = "Mean of wage (Unit: 1,000JPY)",
-    color = "Age class"
-  ) +
-  guides(color=guide_legend(nrow=2)) +
-  theme_classic() +
-  theme(
-    legend.position = "bottom"
-  )
-# save
-ggsave(
-  "line_seniority_summary_assignment.pdf",
-  plot = line_seniority_summary_assignment,
-  width = 200,
-  height = 200,
-  units = "mm"
-)
 # 
 # ----- multiple.figures -----
 # Automated figure drawing using purrr::map() function
