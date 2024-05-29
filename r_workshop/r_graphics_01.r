@@ -14,6 +14,7 @@ library(estatapi)
 library(khroma)
 library(viridis)
 future::plan(multisession, workers = 16)
+library(gtsummary)
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
 # # 
@@ -375,6 +376,32 @@ ggsave(
   height = 200,
   units = "mm"
 )
+# revise the initial line plot (part 2)
+line_seniority_summary_assignment <- 
+  line_seniority_summary + 
+  scale_color_viridis(
+    option = "plasma",
+    direction = -1,
+    discrete = TRUE
+  ) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=2)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+# save
+ggsave(
+  "line_seniority_summary_assignment.pdf",
+  plot = line_seniority_summary_assignment,
+  width = 200,
+  height = 200,
+  units = "mm"
+)
 # 
 # ----- multiple.figures -----
 # Automated figure drawing using purrr::map() function
@@ -430,4 +457,81 @@ ggsave(
 #   print
 #   )
 # dev.off()
+# 
+# ----- distribution -----
+# make a summary table
+data_seniority_summary <- 
+  data_seniority %>% 
+  dplyr::group_by(school, age_class, length_service) %>% 
+  dplyr::summarise(
+    N = sum(!is.na(value)),
+    Min. = min(value, na.rm = TRUE),
+    Mean = mean(value, na.rm = TRUE),
+    Median = median(value, na.rm = TRUE),
+    Max. = max(value, na.rm = TRUE),
+    SD = sd(value, na.rm = TRUE),
+    SE = sd(value, na.rm = TRUE)/(sqrt(n()))
+  )
+# another solution
+# make a summary table
+data_seniority_summary <- 
+  data_seniority %>% 
+  tidyr::drop_na(value) %>% 
+  dplyr::group_by(school, age_class, length_service) %>% 
+  dplyr::summarise(
+    N = n(),　# sample size
+    Min. = min(value), 
+    Mean = mean(value), # arithmetic mean
+    Median = median(value),
+    Max. = max(value),
+    SD = sd(value), # standard deviation
+    SE = sd(value)/(sqrt(n())) # standard error (deviation of mean)
+  )
+# save the results in csv format
+# The summary table is often too large to read all.
+readr::write_excel_csv(
+  data_seniority_summary,
+  "data_seniority_summary.csv"
+)
+# density plot
+data_seniority_summary_density <- 
+  data_seniority %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+    ) %>%
+  na.omit() %>% 
+  dplyr::group_by(age_class, length_service) %>% 
+  ggplot2::ggplot(
+    aes(
+      x = log(value),
+      color = school
+    )
+  ) +
+  # geom_density()　+
+  stat_density(geom = "line")　+
+  labs(
+    x = "Wage (Unit: 1,000JPY, log Trans.)",
+    y = "Density",
+    color = "School"
+  ) + 
+  scale_color_okabeito() +
+  facet_wrap(~ length_service + age_class, ncol = 12, scale = "free") +
+  theme_classic() +
+  theme(
+    strip.background = element_blank(),
+    legend.key = element_rect(fill = "transparent", colour = "transparent"),
+    legend.background = element_blank(),
+    legend.position = "bottom"
+  )
+# save the results
+ggsave(
+  "data_seniority_summary_density.pdf",
+  plot = data_seniority_summary_density,
+  # The size of graph area can be set in accordance with visibility.
+  width = 600,
+  height = 400,
+  units = "mm"
+)
+
 
