@@ -533,5 +533,16 @@ ggsave(
   height = 400,
   units = "mm"
 )
-
-
+# make a table 1
+data_seniority_table1 <- 
+  data_seniority %>% 
+  na.omit() %>% 
+  dplyr::filter(
+    type == "regular_payment"
+  ) %>%
+  dplyr::select(gender, school, age_class, length_service, industry, size) %>% 
+  gtsummary::tbl_summary(
+    by = school
+  ) 
+data_seniority_table1
+  
