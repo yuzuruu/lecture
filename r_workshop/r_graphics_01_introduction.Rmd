@@ -1,0 +1,272 @@
+---
+title: "Rで作図"
+subtitle: "1. Introduction"
+output:
+  ioslides_presentation:
+    css: ../css/slide.css
+    widescreen: true
+date: "2024-03-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Introduction
+
+## Contact R server
++ Input 133.45.178.25:8787
++ Fill your ID and PW accordingly
+    - ID: your first name
+    - common PW: hogefuga1192+
+
+## Contact from outside via VPN
++ Set up your [VPN](https://www.cc.nagasaki-u.ac.jp/service/outside_the_university.html) app such as Cisco AnyConnect
++ https://www.cc.nagasaki-u.ac.jp/service/outside_the_university.html
++ Before connecting the R server, start the VPN
+
+## ID /PW
++ ID: your first name in small letter all
++ PW: your first name in small letter all
++ Beware of
+    - CAPITAL / small letter
+    - typo
+
+## Project, file, and expansion
++ Project
+    - A place (folder) to save all related to a certain analysis
++ file
+    - A file to save a R code.
+    - Its substance is a .txt file
++ expansion
+    - a string to distinguish file type.
+    - In R, use .r after a file name. Eg.) hoge.r
+
+## Frequently-used keybinds of the RStudio | NO using mouse for quick operation
++ select ($\uparrow$$\downarrow$$\rightarrow$$\leftarrow$+Shift) $\rightarrow$ Ctrl+Enter: Run the code
++ select $\rightarrow$ Ctrl+Shift+c: Comment out the code
++ Ctrl+Shift+m: %>% (pipe operator; assign an object from right to the first argument of function placed at right)
++ Alt+-: <- (assign operator; assign an object from right to left)
++ **Ctrl+s: save**
+
+## Lesson | NO using Japanese character
+1. Make a project entitled "rgraphics.rproj"
+2. Make a R file entitled "rgraphics.r"
+3. Write your code as follows:
+4. Save the R file
+5. Show your results
+
+```{r code.sample, include = TRUE, echo=TRUE, message = FALSE}
+library(sf)
+library(tidyverse)
+```
+
+# Fundamental operation
+
+## Where to write your code
+1. Source pane (topleft, Crtrl+1)
+2. Console pane (Bottomleft, Ctrl+2)
+3. Environment pane (Topright\)
+4. Output pane (Bottomright)
+
+## Read library
++ Whenever you start the R, read the library first.
++ Library is a mass of functions for specific purposes.
+    - R is a station integrating libraries.
+
+```{r load.library, include = TRUE, echo=TRUE}
+library(sf)
+library(tidyverse)
+```
+
+## NOTE
++ Once you install a library, you need not to reinstall it.
++ Once you load a library, you need not to load it again.
+
+```{r note.load.library, include = TRUE, echo=TRUE}
+# If necessary, comment out the target code.
+# install.packages("tidyverse")
+library(tidyverse)
+```
+
+## Calculation
++ We can use the R as a calculator
+```{r calculator, include = TRUE, echo=TRUE}
+1+2+3+4+5+6+7+8+9+10
+sum(1:10)
+
+```
+
+## Calculation (Continued)
++ We can use the R as a calculator
+```{r calculator.product, include = TRUE, echo=TRUE}
+1*2*3*4*5*6*7*8*9*10
+prod(1:10)
+
+```
+
+## Calculation (Continued)
++ We can use the R as a calculator
+```{r calculator.log, include = TRUE, echo=TRUE}
+log(1*2*3*4*5*6*7*8*9*10)
+log10(prod(1:10))
+```
+
+
+## Read data
++ R can read variety of files including *rds*, *csv*, *xlsx*, *dta*, and others.
++ This time, we read an MSExcel file.
++ Procedure
+    1. Obtain a certain target data
+    2. Upload the MSExcel file (.xlsx) onto your project folder.
+    3. Read the data following the code.
+
+## Show the data
++ Run the assigned object
++ Frequently-used variable type
+    - **dbl**: Double
+    - **int**: Integer
+    - **chr**: Character
+    - **dttm**: date and time (POSIXt)
+    - **fct**: factor
++ Depending on the type, what we can do is subject to change.
+
+## Assignment
++ Assign data, figure, and others into an object
++ Free to name the object by your own
++ Available to succeed
+
+```{r assignment, include = TRUE, echo=TRUE}
+logresults <- log(1*2*3*4*5*6*7*8*9*10)
+logresults
+```
+
+## Assignment
++ Download four .rds data file from my GitHub (https://github.com/yuzuruu/lecture/tree/main/r_workshop)
++ Upload the data onto your RStudio server
++ Read any of the data.
+
+
+## Read objects
+```{r read.data, include = TRUE, echo=TRUE}
+junior <- 
+  readr::read_rds("seniority_data_tutorial_college.rds")
+high <- 
+  readr::read_rds("seniority_data_tutorial_high.rds")
+college <- 
+  readr::read_rds("seniority_data_tutorial_college.rds")
+university <- 
+  readr::read_rds("seniority_data_tutorial_university.rds")
+```
+
+## Frequently-used operators
++ <- : assign an object at right to one at left
+  - shortcut: Alt+-
++ %>% : assign left-hand-side object into the first argument of the right-hand-side function
+  - shortcut: Ctrl+Shift+m
+
+
+## Combine the data
+```{r combine.data, include = TRUE, echo=TRUE}
+data_seniority <- 
+  junior %>% 
+  # bind the object
+  # NOTE
+  # Name of variables and the N. of variables should be the same.
+  dplyr::bind_rows(high) %>% 
+  dplyr::bind_rows(college) %>% 
+  dplyr::bind_rows(university) 
+```
+
+## filter
+```{r filter.data.01, include = TRUE, echo=TRUE}
+# filter
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  # make a subset of the data using dplyr::filter() function
+  # NOTE
+  # Multiple conditions are available.
+  dplyr::filter(
+    school == "university"
+  )
+# print content of the object
+data_seniority_filtered
+```
+
+## Frequently-used operators
++ == :equivalent to
++ != :NOT equivalent to
++ &: and
++ |: or
++ %in%: any of (usually used with vector containing conditions)
+
+## filter (Cont.)
+```{r filter.data.02, include = TRUE, echo=TRUE}
+# filter with multiple variables
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school == "university" & gender == "female"
+  )
+data_seniority_filtered
+```
+
+## filter (Cont.)
+```{r filter.data.03, include = TRUE, echo=TRUE}
+# filter with multiple conditions
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school %in% c("university", "college")
+  )
+data_seniority_filtered
+```
+
+# Draw a figure
+
+## What to do
++ Target
+    - *Wage census* of Japan (2010-2019)
+    - Make a line plot showing wage transition by length of service and age class
+    - A basis of so-called "seniotiry payroll"
++ Procedure
+    1. Make a data set
+    2. Draw the figure
+    3. Check its aesthetics
+    
+## summarize to obtain aggregated data 
+```{r summarise, include = TRUE, echo=TRUE}
+data_seniority_summary <- 
+  data_seniority %>% 
+  dplyr::filter(
+    school == "university"
+  ) %>% 
+  group_by(length_service, age_class) %>% 
+  summarise(
+    Mean = mean(value, na.rm = TRUE)
+  )
+data_seniority_summary
+```
+
+## plot in the beginning 
+```{r initial.plot, include = TRUE, echo=TRUE}
+line_seniority_summary <- 
+  data_seniority_summary %>% 
+  ggplot2::ggplot(
+    aes(
+      x = length_service,
+      y = Mean,
+      color = age_class,
+      group = age_class
+    )
+  ) +
+  geom_point() +
+  geom_line()
+line_seniority_summary
+```
+
+## plot in the beginning (Cont.) | This figure does not satisfies us.
+```{r initial.plot.print, include = TRUE, echo=TRUE, warning=FALSE}
+line_seniority_summary
+```
+

@@ -14,6 +14,7 @@ library(estatapi)
 library(khroma)
 library(viridis)
 future::plan(multisession, workers = 16)
+library(gtsummary)
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
 # # 
@@ -278,18 +279,142 @@ future::plan(multisession, workers = 16)
 # # rds
 # readr::write_rds(seniority_data_01, "seniority_data_01.rds")
 # #
-# # ----- line.seniority.01 -----
-# # read data
-# seniority_data_01 <- readr::read_rds("seniority_data_01.rds")
-# # plot
-# seniority_data_01_line <- 
-#   seniority_data_01 %>% 
-#   dplyr::filter(industry %in% c("MINING AND QUARRYING OF STONE", "CONSTRUCTION", "MANUFACTURING", "ELECTRICITY, GAS, HEAT SUPPLY AND WATER", "INFORMATION AND COMMUNICATIONS", "TRANSPORT AND POSTAL SERVICES", "WHOLESALE AND RETAIL TRADE", "FINANCE AND INSURANCE", "REAL ESTATE AND GOODS RENTAL AND LEASING", "SCIENTIFIC RESEARCH, PROFESSIONAL AND TECHNICAL SERVICES", "ACCOMMODATIONS, EATING AND DRINKING SERVICES", "LIVING-RELATED AND PERSONAL SERVICES AND AMUSEMENT SERVICES",  "EDUCATION, LEARNING SUPPORT", "MEDICAL, HEALTH CARE AND WELFARE", "COMPOUND SERVICES", "SERVICES, N.E.C.")) %>% 
-#   # na.omit() %>% 
-#   group_by(type, industry, size) %>% 
-#   nest() %>% 
+# ----- read.data -----
+# Read our data separately.
+# Github accept data file less than 25MB.
+# To overcome the challenge, we split the entire data into four.
+# To download the data, visit the following page.
+# https://github.com/yuzuruu/lecture/tree/yuzuru/r_workshop
+# data 1/4 
+junior <- 
+  readr::read_rds("seniority_data_tutorial_college.rds")
+# data 2/4 
+high <- 
+  readr::read_rds("seniority_data_tutorial_high.rds")
+# data 3/4 
+college <- 
+  readr::read_rds("seniority_data_tutorial_college.rds")
+# data 4/4 
+university <- 
+  readr::read_rds("seniority_data_tutorial_university.rds")
+# Combine the data altogether
+data_seniority <- 
+  junior %>% 
+  dplyr::bind_rows(high) %>% 
+  dplyr::bind_rows(college) %>% 
+  dplyr::bind_rows(university) 
+# ----- filter.function -----
+# filter
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school == "university"
+  )
+# filter with multiple variables
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school == "university" & gender == "female"
+  )
+# filter with multiple conditions
+data_seniority_filtered <- 
+  data_seniority  %>% 
+  dplyr::filter(
+    school %in% c("university", "college")
+  )
+# ----- line.basic -----
+# make a sample data
+data_seniority_summary <- 
+  data_seniority %>% 
+  dplyr::filter(
+    school == "university"
+  ) %>% 
+  group_by(length_service, age_class) %>% 
+  summarise(
+    Mean = mean(value, na.rm = TRUE),
+    Median = median(value, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  )
+# make a initial plot
+line_seniority_summary <- 
+  data_seniority_summary %>% 
+  ggplot2::ggplot(
+    aes(
+      x = length_service,
+      y = Median,
+      color = age_class,
+      group = age_class
+    )
+  ) +
+  geom_point() +
+  geom_line()
+# revise the initial line plot
+line_seniority_summary_revised <- 
+  line_seniority_summary + 
+  # scale_color_viridis(discrete = TRUE) +
+  scale_color_smoothrainbow(discrete = TRUE) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=2)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+# save
+# The saved figure is found in the same directory of your .r file.
+ggsave(
+  "line_seniority_summary_revised.pdf",
+  plot = line_seniority_summary_revised,
+  width = 200,
+  height = 200,
+  units = "mm"
+)
+# revise the initial line plot (part 2)
+line_seniority_summary_assignment <- 
+  line_seniority_summary + 
+  scale_color_viridis(
+    option = "plasma",
+    direction = -1,
+    discrete = TRUE
+  ) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=2)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom"
+  )
+# save
+ggsave(
+  "line_seniority_summary_assignment.pdf",
+  plot = line_seniority_summary_assignment,
+  width = 200,
+  height = 200,
+  units = "mm"
+)
+# 
+# ----- multiple.figures -----
+# Automated figure drawing using purrr::map() function
+# line_seniority_summary_separated <- 
+#   data_seniority %>% 
 #   dplyr::mutate(
-#     seniority_line = purrr::map(
+#     length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+#     age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+#   ) %>% 
+#   dplyr::group_by(type, gender, size,school, year, industry) %>%
+#   tidyr::nest() %>% 
+#   dplyr::mutate(
+#     figure = purrr::map(
 #       data,
 #       ~
 #         ggplot2::ggplot(
@@ -298,35 +423,126 @@ future::plan(multisession, workers = 16)
 #             x = length_service,
 #             y = value,
 #             color = age_class,
-#             group = age_class
-#           ) 
+#             group = age_class,
+#             na.rm = TRUE
+#           )
 #         ) +
-#         geom_line() +
-#         geom_point() + 
+#         geom_point() +
+#         geom_line() + 
 #         scale_color_smoothrainbow(discrete = TRUE) +
 #         labs(
-#           x = "Length of service (Unit: years)",
-#           y = "Wage amount (Unit: 1,000JPY)",
-#           color = "Age class (Unit: years)",
-#           title = industry, 
-#           subtitle = paste0(type, " (",size,")")
-#         ) + 
-#         facet_wrap(~ gender + school + year, scales = "free_y") +
+#           x = "Length of service (Unit: year)",
+#           y = "Regular payment (Unit: 1,000JPY)",
+#           color = "Age class",
+#           title = paste(industry,"in", lubridate::year(year)),
+#           subtitle = paste("(", gender, size, "persons", school, ")")
+#         ) +
+#         guides(color = guide_legend(nrow=2)) +
 #         theme_classic() +
 #         theme(
-#           axis.text.x = element_text(angle =45, hjust = 1),
 #           legend.position = "bottom",
 #           strip.background = element_blank()
-#         ) +
-#         guides(color=guide_legend(nrow=1))
+#         )
 #     )
 #   )
-# # save the line plots
-# pdf(
-#   "seniority_data_01_line.pdf",
-#   width = 20,
-#   height = 20
-# )
-# hoge$seniority_line
+# # # monitor a certain figure
+# line_seniority_summary_separated$figure[[1]]
+# # save the figure
+# # WARNING
+# # This process needs long computation period. 
+# # TRY before RUN
+# pdf("line_seniority_summary_separated.pdf")
+# purrr::walk(
+#   line_seniority_summary_separated$figure, 
+#   print
+#   )
 # dev.off()
-
+# 
+# ----- distribution -----
+# make a summary table
+data_seniority_summary <- 
+  data_seniority %>% 
+  dplyr::group_by(school, age_class, length_service) %>% 
+  dplyr::summarise(
+    N = sum(!is.na(value)),
+    Min. = min(value, na.rm = TRUE),
+    Mean = mean(value, na.rm = TRUE),
+    Median = median(value, na.rm = TRUE),
+    Max. = max(value, na.rm = TRUE),
+    SD = sd(value, na.rm = TRUE),
+    SE = sd(value, na.rm = TRUE)/(sqrt(n()))
+  )
+# another solution
+# make a summary table
+data_seniority_summary <- 
+  data_seniority %>% 
+  tidyr::drop_na(value) %>% 
+  dplyr::group_by(school, age_class, length_service) %>% 
+  dplyr::summarise(
+    N = n(),　# sample size
+    Min. = min(value), 
+    Mean = mean(value), # arithmetic mean
+    Median = median(value),
+    Max. = max(value),
+    SD = sd(value), # standard deviation
+    SE = sd(value)/(sqrt(n())) # standard error (deviation of mean)
+  )
+# save the results in csv format
+# The summary table is often too large to read all.
+readr::write_excel_csv(
+  data_seniority_summary,
+  "data_seniority_summary.csv"
+)
+# density plot
+data_seniority_summary_density <- 
+  data_seniority %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+    ) %>%
+  na.omit() %>% 
+  dplyr::group_by(age_class, length_service) %>% 
+  ggplot2::ggplot(
+    aes(
+      x = log(value),
+      color = school
+    )
+  ) +
+  # geom_density()　+
+  stat_density(geom = "line")　+
+  labs(
+    x = "Wage (Unit: 1,000JPY, log Trans.)",
+    y = "Density",
+    color = "School"
+  ) + 
+  scale_color_okabeito() +
+  facet_wrap(~ length_service + age_class, ncol = 12, scale = "free") +
+  theme_classic() +
+  theme(
+    strip.background = element_blank(),
+    legend.key = element_rect(fill = "transparent", colour = "transparent"),
+    legend.background = element_blank(),
+    legend.position = "bottom"
+  )
+# save the results
+ggsave(
+  "data_seniority_summary_density.pdf",
+  plot = data_seniority_summary_density,
+  # The size of graph area can be set in accordance with visibility.
+  width = 600,
+  height = 400,
+  units = "mm"
+)
+# make a table 1
+data_seniority_table1 <- 
+  data_seniority %>% 
+  na.omit() %>% 
+  dplyr::filter(
+    type == "regular_payment"
+  ) %>%
+  dplyr::select(gender, school, age_class, length_service, industry, size) %>% 
+  gtsummary::tbl_summary(
+    by = school
+  ) 
+data_seniority_table1
+  
