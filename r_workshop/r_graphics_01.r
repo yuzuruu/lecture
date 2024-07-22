@@ -545,4 +545,116 @@ data_seniority_table1 <-
     by = school
   ) 
 data_seniority_table1
-  
+# 
+# ----- map.Japan -----
+# read data
+# ssdse-a-2024
+# We download this data from SSDSE
+# (https://www.nstac.go.jp/use/literacy/ssdse/)
+ssdse <- 
+  readxl::read_excel(
+  "./r_workshop/SSDSE-A-2024.xlsx",
+  skip = 2
+  )
+# shapefiles
+# We download the data from GADM
+# (https://gadm.org/download_country.html)
+map_Japan <- 
+  sf::st_read(
+    "./r_workshop/gadm41_JPN_shp/gadm41_JPN_2.shp"
+  )
+# combine the data and shapefiles
+ssdse_map_JPN <- 
+  ssdse %>% 
+  dplyr::left_join(
+    map_Japan,
+    by = c("市区町村" = "NL_NAME_2")
+  ) %>% 
+  sf::st_as_sf()
+# Functions to split Okinawa prefecture
+# https://rpubs.com/ktgrstsh/775867
+shift_okinawa <-
+  function(data,
+           col_pref = "都道府県",
+           pref_value = "沖縄県",
+           geometry = "geometry",
+           zoom_rate = 3,
+           pos = c(4.5, 17.5)
+           ) 
+    {
+    row_okinawa <- data[[col_pref]] == pref_value
+    geo <- data[[geometry]][row_okinawa]
+    cent <- sf::st_centroid(geo)
+    geo2 <- (geo - cent) * zoom_rate + cent + pos
+    data[[geometry]][row_okinawa] <- geo2
+    return(sf::st_as_sf(data))
+    }
+layer_autoline_okinawa <- 
+  function(
+    x = c(129, 132.5, 138),
+    xend = c(132.5, 138, 138),
+    y = c(40, 40, 42),
+    yend = c(40, 42, 46),
+    size = ggplot2::.pt / 15
+    )
+    {
+    ggplot2::annotate(
+      "segment",
+      x = x,
+      xend = xend,
+      y = y,
+      yend = yend,
+      size = .pt / 15
+    )
+    }
+# plot a map
+population_by_municipality <- 
+  ssdse_map_JPN %>% 
+  # transform Okinawa data for replacement using shift_okinawa() function
+  shift_okinawa(
+    col_pref="都道府県", 
+    pref_value="沖縄県", 
+    # zoom rate
+    # 1: No zoom
+    zoom_rate = 1
+    ) %>%
+  ggplot() + 
+  geom_sf(
+    aes(
+      # by switching the variable's name, we can change colors 
+      # of the chroopleth map.
+      fill = 総人口
+      ), 
+    # No administrative boundaries' lines
+    # When you need to draw the lines, change colors below.
+    color = NA
+    ) + 
+  # change label of legend's name
+  labs(
+    fill = "Total Population (Unit: Persons)"
+  ) +
+  # add lines separating main land and Okinawa
+  layer_autoline_okinawa() + 
+  # apply a color-universal-design-conforming color palette
+  # based on khroma() package
+  scale_fill_iridescent() +
+  # remove axes lines
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(10, "mm"),
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()
+    )
+# save
+ggsave(
+  "population_by_municipality.pdf",
+  plot = population_by_municipality,
+  width = 300,
+  height = 300,
+  unit = "mm",
+  # tips to use Japanese characters
+  device = cairo_pdf
+)
+
+
