@@ -1,19 +1,18 @@
 ####################################################################
 # R graphics
 # Make: 29th. March 2024
-# Revision: 
+# Revision: 9th. October 2024
 # by Yuzuru Utsunomiya, Ph. D.
 # Faculty of Economics, Nagasaki University
 ####################################################################
 # 
 # ----- read.library -----
 library(tidyverse)
-library(furrr)
-library(khroma)
+# library(furrr)
 library(estatapi)
 library(khroma)
 library(viridis)
-future::plan(multisession, workers = 16)
+# future::plan(multisession, workers = 16)
 library(gtsummary)
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
