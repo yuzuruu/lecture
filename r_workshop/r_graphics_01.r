@@ -14,8 +14,6 @@ library(khroma)
 library(viridis)
 # future::plan(multisession, workers = 16)
 library(gtsummary)
-# 
-# 
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
 # # 
@@ -406,58 +404,58 @@ ggsave(
 # 
 # ----- multiple.figures -----
 # Automated figure drawing using purrr::map() function
-# line_seniority_summary_separated <- 
-#   data_seniority %>% 
-#   dplyr::mutate(
-#     length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
-#     age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
-#   ) %>% 
-#   dplyr::group_by(type, gender, size,school, year, industry) %>%
-#   tidyr::nest() %>% 
-#   dplyr::mutate(
-#     figure = purrr::map(
-#       data,
-#       ~
-#         ggplot2::ggplot(
-#           data = .,
-#           aes(
-#             x = length_service,
-#             y = value,
-#             color = age_class,
-#             group = age_class,
-#             na.rm = TRUE
-#           )
-#         ) +
-#         geom_point() +
-#         geom_line() + 
-#         scale_color_smoothrainbow(discrete = TRUE) +
-#         labs(
-#           x = "Length of service (Unit: year)",
-#           y = "Regular payment (Unit: 1,000JPY)",
-#           color = "Age class",
-#           title = paste(industry,"in", lubridate::year(year)),
-#           subtitle = paste("(", gender, size, "persons", school, ")")
-#         ) +
-#         guides(color = guide_legend(nrow=2)) +
-#         theme_classic() +
-#         theme(
-#           legend.position = "bottom",
-#           strip.background = element_blank()
-#         )
-#     )
-#   )
-# # # monitor a certain figure
-# line_seniority_summary_separated$figure[[1]]
-# # save the figure
-# # WARNING
-# # This process needs long computation period. 
-# # TRY before RUN
-# pdf("line_seniority_summary_separated.pdf")
-# purrr::walk(
-#   line_seniority_summary_separated$figure, 
-#   print
-#   )
-# dev.off()
+line_seniority_summary_separated <-
+  data_seniority %>%
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  ) %>%
+  dplyr::group_by(type, gender, size,school, year, industry) %>%
+  tidyr::nest() %>%
+  dplyr::mutate(
+    figure = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = .,
+          aes(
+            x = length_service,
+            y = value,
+            color = age_class,
+            group = age_class,
+            na.rm = TRUE
+          )
+        ) +
+        geom_point() +
+        geom_line() +
+        scale_color_smoothrainbow(discrete = TRUE) +
+        labs(
+          x = "Length of service (Unit: year)",
+          y = "Regular payment (Unit: 1,000JPY)",
+          color = "Age class",
+          title = paste(industry,"in", lubridate::year(year)),
+          subtitle = paste("(", gender, size, "persons", school, ")")
+        ) +
+        guides(color = guide_legend(nrow=2)) +
+        theme_classic() +
+        theme(
+          legend.position = "bottom",
+          strip.background = element_blank()
+        )
+    )
+  )
+# # monitor a certain figure
+line_seniority_summary_separated$figure[[1]]
+# save the figure
+# WARNING
+# This process needs long computation period.
+# TRY before RUN
+pdf("line_seniority_summary_separated.pdf")
+purrr::walk(
+  line_seniority_summary_separated$figure,
+  print
+  )
+dev.off()
 # 
 # ----- distribution -----
 # make a summary table
@@ -657,5 +655,75 @@ ggsave(
   # tips to use Japanese characters
   device = cairo_pdf
 )
+# 
+# ----- Japan.Map -----
+# read data
+# We can download the data from the following.
+# https://www.nstac.go.jp/use/literacy/ssdse/#SSDSE-B
+Ssdse_2024 <- 
+  # read the data
+  # Before reading, upload the data onto RStudio server
+  readxl::read_excel(
+    "./r_workshop/SSDSE-B-2024.xlsx",
+    # ignore the first row
+    skip = 1
+    ) %>% 
+  # remove all characters 
+  # Instead of NA, the dataset use "-", resulting in malfunction.
+  dplyr::mutate(
+    across(
+      where(is.character),
+      ~ str_remove(.,"NA")
+      ),
+    地域コード = factor(地域コード),
+    都道府県 = factor(都道府県)
+    ) %>%
+  # transform the character data into numeric
+  dplyr::mutate(
+    across(where(is.character), as.numeric)
+  ) %>% 
+  tidyr::pivot_longer(
+    # select variables other than the 1st., 2nd, and 3rd. column
+    cols = c(-1,-2,-3),
+    names_to = "variable",
+    values_to = "number"
+  ) %>% 
+  # transform the character data into factor
+  dplyr::mutate(
+    across(where(is.character), factor)
+  ) %>% 
+  # reset variables' name
+  data.table::setnames(c("year","region_code","prefecture","variable","number")) %>% 
+  # select a certin variable
+  dplyr::filter(
+    year == 2021 & variable == "総人口"
+  )
+# read shapefiles
+# Using GADM, we can download the shapefiles
+Shapefiles_Japan <- 
+  sf::read_sf(
+    "./gadm41_JPN_shp/gadm41_JPN_1.shp"
+  )
+# draw a map
+Ssdse_Shapefiles <- 
+  Ssdse_2024 %>% 
+  dplyr::left_join(
+    Shapefiles_Japan,
+    by = c("prefecture" = "NL_NAME_1")
+  )
+# draw a map
+Ssdse_Map <- 
+  hoge %>% 
+  ggplot2::ggplot(
+    aes(
+      geometry = geometry,
+      fill = number
+    )
+  ) +
+  geom_sf() +
+  labs(fill = "N. of persons (Unit: 1,000 pax)") +
+  scale_fill_smoothrainbow() +
+  theme_void()
+
 
 
