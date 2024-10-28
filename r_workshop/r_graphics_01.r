@@ -713,7 +713,7 @@ Ssdse_Shapefiles <-
   )
 # draw a map
 Ssdse_Map <- 
-  hoge %>% 
+  Ssdse_Shapefiles %>% 
   ggplot2::ggplot(
     aes(
       geometry = geometry,
@@ -724,6 +724,175 @@ Ssdse_Map <-
   labs(fill = "N. of persons (Unit: 1,000 pax)") +
   scale_fill_smoothrainbow() +
   theme_void()
-
-
+# 
+# multiple maps
+# 
+Ssdse_2024_01 <- 
+  # read the data
+  # Before reading, upload the data onto RStudio server
+  readxl::read_excel(
+    "./r_workshop/SSDSE-B-2024.xlsx",
+    # ignore the first row
+    skip = 1
+  ) %>% 
+  # remove all characters 
+  # Instead of NA, the dataset use "-", resulting in malfunction.
+  dplyr::mutate(
+    across(
+      where(is.character),
+      ~ str_remove(.,"NA")
+    ),
+    地域コード = factor(地域コード),
+    都道府県 = factor(都道府県)
+  ) %>%
+  # transform the character data into numeric
+  dplyr::mutate(
+    across(where(is.character), as.numeric)
+  ) %>% 
+  tidyr::pivot_longer(
+    # select variables other than the 1st., 2nd, and 3rd. column
+    cols = c(-1,-2,-3),
+    names_to = "variable",
+    values_to = "number"
+  ) %>% 
+  # transform the character data into factor
+  dplyr::mutate(
+    across(where(is.character), factor)
+  ) %>% 
+  # reset variables' name
+  data.table::setnames(c("year","region_code","prefecture","variable","number")) %>% 
+  # select a certin variable
+  # dplyr::filter(
+  #   year == 2021 & variable == "総人口"
+  # )
+  dplyr::filter(
+    year == 2021
+  )
+# 
+Ssdse_Shapefiles_01 <- 
+  Ssdse_2024_01 %>% 
+  dplyr::left_join(
+    Shapefiles_Japan,
+    by = c("prefecture" = "NL_NAME_1")
+  )
+# 
+Ssdse_Map_multiple_01 <- 
+  Ssdse_Shapefiles_01 %>% 
+  dplyr::group_by(variable) %>% 
+  nest() %>% 
+  dplyr::mutate(
+    figure = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = .,
+          aes(
+            geometry = geometry,
+            fill = number
+          )
+        ) +
+        geom_sf() +
+        labs(fill = variable) +
+        scale_fill_smoothrainbow() +
+        theme_void()
+    )
+  )
+# make the maps of whole years
+Ssdse_2024_02 <- 
+  # read the data
+  # Before reading, upload the data onto RStudio server
+  readxl::read_excel(
+    "./r_workshop/SSDSE-B-2024.xlsx",
+    # ignore the first row
+    skip = 1
+  ) %>% 
+  # remove all characters 
+  # Instead of NA, the dataset use "-", resulting in malfunction.
+  dplyr::mutate(
+    across(
+      where(is.character),
+      ~ str_remove(.,"NA")
+    ),
+    地域コード = factor(地域コード),
+    都道府県 = factor(都道府県)
+  ) %>%
+  # transform the character data into numeric
+  dplyr::mutate(
+    across(where(is.character), as.numeric)
+  ) %>% 
+  # transform shape of data
+  tidyr::pivot_longer(
+    # select variables other than the 1st., 2nd, and 3rd. column
+    cols = c(-1,-2,-3),
+    names_to = "variable",
+    values_to = "number"
+  ) %>% 
+  # transform the character data into factor
+  dplyr::mutate(
+    dplyr::across(
+      where(is.character), 
+      factor
+      )
+  ) %>% 
+  # reset variables' name
+  data.table::setnames(c("year","region_code","prefecture","variable","number")) 
+# combine the reshaped SSDSE data set and the shapefiles 
+Ssdse_Shapefiles_02 <- 
+  Ssdse_2024_02 %>% 
+  dplyr::left_join(
+    Shapefiles_Japan,
+    by = c(
+      "prefecture" = "NL_NAME_1"
+      )
+  )
+# draw multiple maps by grouped variable
+Ssdse_Map_multiple_02 <- 
+  Ssdse_Shapefiles_02 %>% 
+  # convert the data into grouped one by variables
+  dplyr::group_by(variable) %>% 
+  # make a list by group
+  tidyr::nest() %>% 
+  # apply function to each element (group) 
+  dplyr::mutate(
+    figure = purrr::map(
+      # provide data
+      # (the function, "nest", makes a nested data set entitled "data")
+      data,
+      ~
+        # part of unnamed function
+        ggplot2::ggplot(
+          data = .,
+          aes(
+            geometry = geometry,
+            fill = number
+          ),
+          colour = NA
+        ) +
+        geom_sf() +
+        # wrap to make multiple figures by facets
+        facet_wrap(~ year) +
+        labs(fill = variable) +
+        scale_fill_smoothrainbow() +
+        theme_void() +
+        theme(
+          legend.position = "bottom",
+          legend.key.height= unit(2, 'mm'),
+          legend.key.width= unit(25, 'mm')
+        )
+    )
+  )
+# show an example of the figure
+Ssdse_Map_multiple_02$figure[[22]]
+# save one of the figure
+ggsave(
+  "Ssdse_Map_multiple_02.pdf",
+  # choose any of a figure by changing the number (22 this time).
+  # Also, the N. of variable is 109.
+  plot = Ssdse_Map_multiple_02$figure[[22]],
+  width = 450,
+  height = 300,
+  units = "mm",
+  # When Japanese phrases are included, device setting is necessary.
+  device = cairo_pdf
+)
 
