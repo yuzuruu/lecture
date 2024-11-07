@@ -375,6 +375,108 @@ ggsave(
   height = 200,
   units = "mm"
 )
+
+
+# ----- line.assignment -----
+# make a sample data
+data_seniority_summary_02 <- 
+  data_seniority %>% 
+  dplyr::filter(
+    school == "university"
+  ) %>% 
+  group_by(length_service, age_class, gender) %>% 
+  summarise(
+    Mean = mean(value, na.rm = TRUE),
+    Median = median(value, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  )
+# make a initial plot
+line_seniority_summary_02 <- 
+  data_seniority_summary_02 %>% 
+  ggplot2::ggplot(
+    aes(
+      x = length_service,
+      y = Median,
+      color = age_class,
+      group = age_class
+    )
+  ) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ gender) +
+  scale_color_smoothrainbow(
+    discrete = TRUE,
+    reverse = TRUE
+    ) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=1)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    strip.background = element_blank()
+  )
+# save
+# The saved figure is found in the same directory of your .r file.
+ggsave(
+  "line_seniority_summary_02.pdf",
+  plot = line_seniority_summary_02,
+  width = 360,
+  height = 180,
+  units = "mm"
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # revise the initial line plot (part 2)
 line_seniority_summary_assignment <- 
   line_seniority_summary + 
