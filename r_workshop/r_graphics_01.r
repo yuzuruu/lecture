@@ -287,16 +287,16 @@ library(gtsummary)
 # https://github.com/yuzuruu/lecture/tree/yuzuru/r_workshop
 # data 1/4 
 junior <- 
-  readr::read_rds("seniority_data_tutorial_college.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_college.rds")
 # data 2/4 
 high <- 
-  readr::read_rds("seniority_data_tutorial_high.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_high.rds")
 # data 3/4 
 college <- 
-  readr::read_rds("seniority_data_tutorial_college.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_college.rds")
 # data 4/4 
 university <- 
-  readr::read_rds("seniority_data_tutorial_university.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_university.rds")
 # Combine the data altogether
 data_seniority <- 
   junior %>% 
@@ -405,58 +405,58 @@ ggsave(
 # 
 # ----- multiple.figures -----
 # Automated figure drawing using purrr::map() function
-# line_seniority_summary_separated <- 
-#   data_seniority %>% 
-#   dplyr::mutate(
-#     length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
-#     age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
-#   ) %>% 
-#   dplyr::group_by(type, gender, size,school, year, industry) %>%
-#   tidyr::nest() %>% 
-#   dplyr::mutate(
-#     figure = purrr::map(
-#       data,
-#       ~
-#         ggplot2::ggplot(
-#           data = .,
-#           aes(
-#             x = length_service,
-#             y = value,
-#             color = age_class,
-#             group = age_class,
-#             na.rm = TRUE
-#           )
-#         ) +
-#         geom_point() +
-#         geom_line() + 
-#         scale_color_smoothrainbow(discrete = TRUE) +
-#         labs(
-#           x = "Length of service (Unit: year)",
-#           y = "Regular payment (Unit: 1,000JPY)",
-#           color = "Age class",
-#           title = paste(industry,"in", lubridate::year(year)),
-#           subtitle = paste("(", gender, size, "persons", school, ")")
-#         ) +
-#         guides(color = guide_legend(nrow=2)) +
-#         theme_classic() +
-#         theme(
-#           legend.position = "bottom",
-#           strip.background = element_blank()
-#         )
-#     )
-#   )
-# # # monitor a certain figure
-# line_seniority_summary_separated$figure[[1]]
-# # save the figure
-# # WARNING
-# # This process needs long computation period. 
-# # TRY before RUN
-# pdf("line_seniority_summary_separated.pdf")
-# purrr::walk(
-#   line_seniority_summary_separated$figure, 
-#   print
-#   )
-# dev.off()
+line_seniority_summary_separated <-
+  data_seniority %>%
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  ) %>%
+  dplyr::group_by(type, gender, size,school, year, industry) %>%
+  tidyr::nest() %>%
+  dplyr::mutate(
+    figure = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = .,
+          aes(
+            x = length_service,
+            y = value,
+            color = age_class,
+            group = age_class,
+            na.rm = TRUE
+          )
+        ) +
+        geom_point() +
+        geom_line() +
+        scale_color_smoothrainbow(discrete = TRUE) +
+        labs(
+          x = "Length of service (Unit: year)",
+          y = "Regular payment (Unit: 1,000JPY)",
+          color = "Age class",
+          title = paste(industry,"in", lubridate::year(year)),
+          subtitle = paste("(", gender, size, "persons", school, ")")
+        ) +
+        guides(color = guide_legend(nrow=2)) +
+        theme_classic() +
+        theme(
+          legend.position = "bottom",
+          strip.background = element_blank()
+        )
+    )
+  )
+# # monitor a certain figure
+line_seniority_summary_separated$figure[[1]]
+# save the figure
+# WARNING
+# This process needs long computation period.
+# TRY before RUN
+pdf("line_seniority_summary_separated.pdf")
+purrr::walk(
+  line_seniority_summary_separated$figure,
+  print
+  )
+dev.off()
 # 
 # ----- distribution -----
 # make a summary table
