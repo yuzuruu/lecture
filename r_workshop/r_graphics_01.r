@@ -9,12 +9,11 @@
 # ----- read.library -----
 library(tidyverse)
 library(furrr)
-library(khroma)
-library(estatapi)
+# library(estatapi)
 library(khroma)
 library(viridis)
-future::plan(multisession, workers = 16)
-library(gtsummary)
+# library(gtsummary)
+library(sf)
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
 # # 
@@ -403,146 +402,170 @@ ggsave(
   units = "mm"
 )
 # 
-# ----- multiple.figures -----
-# Automated figure drawing using purrr::map() function
-line_seniority_summary_separated <-
-  data_seniority %>%
-  dplyr::mutate(
-    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
-    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
-  ) %>%
-  dplyr::group_by(type, gender, size,school, year, industry) %>%
-  tidyr::nest() %>%
-  dplyr::mutate(
-    figure = purrr::map(
-      data,
-      ~
-        ggplot2::ggplot(
-          data = .,
-          aes(
-            x = length_service,
-            y = value,
-            color = age_class,
-            group = age_class,
-            na.rm = TRUE
-          )
-        ) +
-        geom_point() +
-        geom_line() +
-        scale_color_smoothrainbow(discrete = TRUE) +
-        labs(
-          x = "Length of service (Unit: year)",
-          y = "Regular payment (Unit: 1,000JPY)",
-          color = "Age class",
-          title = paste(industry,"in", lubridate::year(year)),
-          subtitle = paste("(", gender, size, "persons", school, ")")
-        ) +
-        guides(color = guide_legend(nrow=2)) +
-        theme_classic() +
-        theme(
-          legend.position = "bottom",
-          strip.background = element_blank()
-        )
-    )
-  )
-# # monitor a certain figure
-line_seniority_summary_separated$figure[[1]]
-# save the figure
-# WARNING
-# This process needs long computation period.
-# TRY before RUN
-pdf("line_seniority_summary_separated.pdf")
-purrr::walk(
-  line_seniority_summary_separated$figure,
-  print
-  )
-dev.off()
+# # ----- multiple.figures -----
+# DUE TO SERVER PERFORMANCE, WE GAVE UP MAKING THE MULTIPLE FIGURES.
+# # Automated figure drawing using purrr::map() function
+# line_seniority_summary_separated <-
+#   data_seniority %>%
+#   dplyr::mutate(
+#     length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+#     age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+#   ) %>%
+#   dplyr::group_by(type, gender, size,school, year, industry) %>%
+#   tidyr::nest() %>%
+#   dplyr::mutate(
+#     figure = purrr::map(
+#       data,
+#       ~
+#         ggplot2::ggplot(
+#           data = .,
+#           aes(
+#             x = length_service,
+#             y = value,
+#             color = age_class,
+#             group = age_class,
+#             na.rm = TRUE
+#           )
+#         ) +
+#         geom_point() +
+#         geom_line() +
+#         scale_color_smoothrainbow(discrete = TRUE) +
+#         labs(
+#           x = "Length of service (Unit: year)",
+#           y = "Regular payment (Unit: 1,000JPY)",
+#           color = "Age class",
+#           title = paste(industry,"in", lubridate::year(year)),
+#           subtitle = paste("(", gender, size, "persons", school, ")")
+#         ) +
+#         guides(color = guide_legend(nrow=2)) +
+#         theme_classic() +
+#         theme(
+#           legend.position = "bottom",
+#           strip.background = element_blank()
+#         )
+#     )
+#   )
+# # # monitor a certain figure
+# line_seniority_summary_separated$figure[[1]]
+# # save the figure
+# # WARNING
+# # This process needs long computation period.
+# # TRY before RUN
+# pdf("line_seniority_summary_separated.pdf")
+# purrr::walk(
+#   line_seniority_summary_separated$figure,
+#   print
+#   )
+# dev.off()
 # 
-# ----- distribution -----
-# make a summary table
-data_seniority_summary <- 
-  data_seniority %>% 
-  dplyr::group_by(school, age_class, length_service) %>% 
-  dplyr::summarise(
-    N = sum(!is.na(value)),
-    Min. = min(value, na.rm = TRUE),
-    Mean = mean(value, na.rm = TRUE),
-    Median = median(value, na.rm = TRUE),
-    Max. = max(value, na.rm = TRUE),
-    SD = sd(value, na.rm = TRUE),
-    SE = sd(value, na.rm = TRUE)/(sqrt(n()))
+# ----- map.Japan -----
+# read data
+# ssdse-a-2024
+# We download this data from SSDSE
+# (https://www.nstac.go.jp/use/literacy/ssdse/)
+ssdse <- 
+  readxl::read_excel(
+    "SSDSE-A-2024.xlsx",
+    skip = 2
   )
-# another solution
-# make a summary table
-data_seniority_summary <- 
-  data_seniority %>% 
-  tidyr::drop_na(value) %>% 
-  dplyr::group_by(school, age_class, length_service) %>% 
-  dplyr::summarise(
-    N = n(),　# sample size
-    Min. = min(value), 
-    Mean = mean(value), # arithmetic mean
-    Median = median(value),
-    Max. = max(value),
-    SD = sd(value), # standard deviation
-    SE = sd(value)/(sqrt(n())) # standard error (deviation of mean)
+# shapefiles
+# We download the data from GADM
+# (https://gadm.org/download_country.html)
+map_Japan <- 
+  sf::st_read(
+    "gadm41_JPN_2.shp"
   )
-# save the results in csv format
-# The summary table is often too large to read all.
-readr::write_excel_csv(
-  data_seniority_summary,
-  "data_seniority_summary.csv"
-)
-# density plot
-data_seniority_summary_density <- 
-  data_seniority %>% 
-  dplyr::mutate(
-    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
-    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
-    ) %>%
-  na.omit() %>% 
-  dplyr::group_by(age_class, length_service) %>% 
-  ggplot2::ggplot(
-    aes(
-      x = log(value),
-      color = school
-    )
-  ) +
-  # geom_density()　+
-  stat_density(geom = "line")　+
-  labs(
-    x = "Wage (Unit: 1,000JPY, log Trans.)",
-    y = "Density",
-    color = "School"
-  ) + 
-  scale_color_okabeito() +
-  facet_wrap(~ length_service + age_class, ncol = 12, scale = "free") +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    legend.key = element_rect(fill = "transparent", colour = "transparent"),
-    legend.background = element_blank(),
-    legend.position = "bottom"
-  )
-# save the results
-ggsave(
-  "data_seniority_summary_density.pdf",
-  plot = data_seniority_summary_density,
-  # The size of graph area can be set in accordance with visibility.
-  width = 600,
-  height = 400,
-  units = "mm"
-)
-# make a table 1
-data_seniority_table1 <- 
-  data_seniority %>% 
-  na.omit() %>% 
-  dplyr::filter(
-    type == "regular_payment"
-  ) %>%
-  dplyr::select(gender, school, age_class, length_service, industry, size) %>% 
-  gtsummary::tbl_summary(
-    by = school
+# combine the data and shapefiles
+ssdse_map_JPN <- 
+  ssdse %>% 
+  dplyr::left_join(
+    map_Japan,
+    by = c("市区町村" = "NL_NAME_2")
+  ) %>% 
+  sf::st_as_sf()
+# Functions to split Okinawa prefecture
+# https://rpubs.com/ktgrstsh/775867
+shift_okinawa <-
+  function(data,
+           col_pref = "都道府県",
+           pref_value = "沖縄県",
+           geometry = "geometry",
+           zoom_rate = 3,
+           pos = c(4.5, 17.5)
   ) 
-data_seniority_table1
-  
+  {
+    row_okinawa <- data[[col_pref]] == pref_value
+    geo <- data[[geometry]][row_okinawa]
+    cent <- sf::st_centroid(geo)
+    geo2 <- (geo - cent) * zoom_rate + cent + pos
+    data[[geometry]][row_okinawa] <- geo2
+    return(sf::st_as_sf(data))
+  }
+layer_autoline_okinawa <- 
+  function(
+    x = c(129, 132.5, 138),
+    xend = c(132.5, 138, 138),
+    y = c(40, 40, 42),
+    yend = c(40, 42, 46),
+    size = ggplot2::.pt / 15
+  )
+  {
+    ggplot2::annotate(
+      "segment",
+      x = x,
+      xend = xend,
+      y = y,
+      yend = yend,
+      size = .pt / 15
+    )
+  }
+# plot a map
+population_by_municipality <- 
+  ssdse_map_JPN %>% 
+  # transform Okinawa data for replacement using shift_okinawa() function
+  shift_okinawa(
+    col_pref="都道府県", 
+    pref_value="沖縄県", 
+    # zoom rate
+    # 1: No zoom
+    zoom_rate = 1
+  ) %>%
+  ggplot() + 
+  geom_sf(
+    aes(
+      # by switching the variable's name, we can change colors 
+      # of the chroopleth map.
+      fill = 総人口
+    ), 
+    # No administrative boundaries' lines
+    # When you need to draw the lines, change colors below.
+    color = NA
+  ) + 
+  # change label of legend's name
+  labs(
+    fill = "Total Population (Unit: Persons)"
+  ) +
+  # add lines separating main land and Okinawa
+  layer_autoline_okinawa() + 
+  # apply a color-universal-design-conforming color palette
+  # based on khroma() package
+  scale_fill_iridescent() +
+  # remove axes lines
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = unit(10, "mm"),
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()
+  )
+# save
+ggsave(
+  "population_by_municipality.pdf",
+  plot = population_by_municipality,
+  width = 300,
+  height = 300,
+  unit = "mm",
+  # tips to use Japanese characters
+  device = cairo_pdf
+)
+# 
