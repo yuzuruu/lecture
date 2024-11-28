@@ -458,7 +458,7 @@ ggsave(
 #   )
 # dev.off()
 # 
-# ----- map.Japan -----
+# ----- map.Japan. -----
 # read data
 # ssdse-a-2024
 # We download this data from SSDSE
@@ -484,7 +484,12 @@ ssdse_map_JPN <-
   ) %>% 
   sf::st_as_sf()
 # Functions to split Okinawa prefecture
+# Okinawa locates distant area from others
+# To draw an organized map, we need to move
+# there. Normally, it is placed topleft area
+# of a map.
 # https://rpubs.com/ktgrstsh/775867
+# function to move Okinawa prefecture
 shift_okinawa <-
   function(data,
            col_pref = "都道府県",
@@ -492,8 +497,8 @@ shift_okinawa <-
            geometry = "geometry",
            zoom_rate = 3,
            pos = c(4.5, 17.5)
-  ) 
-  {
+           )
+    {
     row_okinawa <- data[[col_pref]] == pref_value
     geo <- data[[geometry]][row_okinawa]
     cent <- sf::st_centroid(geo)
@@ -501,6 +506,7 @@ shift_okinawa <-
     data[[geometry]][row_okinawa] <- geo2
     return(sf::st_as_sf(data))
   }
+# function to add lines between moved okinawa and others.
 layer_autoline_okinawa <- 
   function(
     x = c(129, 132.5, 138),
@@ -549,7 +555,8 @@ population_by_municipality <-
   layer_autoline_okinawa() + 
   # apply a color-universal-design-conforming color palette
   # based on khroma() package
-  scale_fill_iridescent() +
+  # scale_fill_iridescent() +
+  scale_fill_smoothrainbow() +
   # remove axes lines
   theme_void() +
   theme(
