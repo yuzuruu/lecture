@@ -1,19 +1,20 @@
 ####################################################################
 # R graphics
 # Make: 29th. March 2024
-# Revision: 
+# Revision: 9th. October 2024
 # by Yuzuru Utsunomiya, Ph. D.
 # Faculty of Economics, Nagasaki University
 ####################################################################
 # 
 # ----- read.library -----
 library(tidyverse)
-library(furrr)
-# library(estatapi)
+# library(furrr)
+library(estatapi)
 library(khroma)
 library(viridis)
-# library(gtsummary)
-library(sf)
+# future::plan(multisession, workers = 16)
+library(gtsummary)
+
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
 # # 
@@ -375,6 +376,63 @@ ggsave(
   height = 200,
   units = "mm"
 )
+
+
+# ----- line.assignment -----
+# make a sample data
+data_seniority_summary_02 <- 
+  data_seniority %>% 
+  dplyr::filter(
+    school == "university"
+  ) %>% 
+  group_by(length_service, age_class, gender) %>% 
+  summarise(
+    Mean = mean(value, na.rm = TRUE),
+    Median = median(value, na.rm = TRUE)
+  ) %>% 
+  ungroup() %>% 
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  )
+# make a initial plot
+line_seniority_summary_02 <- 
+  data_seniority_summary_02 %>% 
+  ggplot2::ggplot(
+    aes(
+      x = length_service,
+      y = Median,
+      color = age_class,
+      group = age_class
+    )
+  ) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ gender) +
+  scale_color_smoothrainbow(
+    discrete = TRUE,
+    reverse = TRUE
+    ) +
+  labs(
+    x = "Length of service (Unit: year)",
+    y = "Mean of wage (Unit: 1,000JPY)",
+    color = "Age class"
+  ) +
+  guides(color=guide_legend(nrow=1)) +
+  theme_classic() +
+  theme(
+    legend.position = "bottom",
+    strip.background = element_blank()
+  )
+# save
+# The saved figure is found in the same directory of your .r file.
+ggsave(
+  "line_seniority_summary_02.pdf",
+  plot = line_seniority_summary_02,
+  width = 360,
+  height = 180,
+  units = "mm"
+)
 # revise the initial line plot (part 2)
 line_seniority_summary_assignment <- 
   line_seniority_summary + 
@@ -402,61 +460,60 @@ ggsave(
   units = "mm"
 )
 # 
-# # ----- multiple.figures -----
-# DUE TO SERVER PERFORMANCE, WE GAVE UP MAKING THE MULTIPLE FIGURES.
-# # Automated figure drawing using purrr::map() function
-# line_seniority_summary_separated <-
-#   data_seniority %>%
-#   dplyr::mutate(
-#     length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
-#     age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
-#   ) %>%
-#   dplyr::group_by(type, gender, size,school, year, industry) %>%
-#   tidyr::nest() %>%
-#   dplyr::mutate(
-#     figure = purrr::map(
-#       data,
-#       ~
-#         ggplot2::ggplot(
-#           data = .,
-#           aes(
-#             x = length_service,
-#             y = value,
-#             color = age_class,
-#             group = age_class,
-#             na.rm = TRUE
-#           )
-#         ) +
-#         geom_point() +
-#         geom_line() +
-#         scale_color_smoothrainbow(discrete = TRUE) +
-#         labs(
-#           x = "Length of service (Unit: year)",
-#           y = "Regular payment (Unit: 1,000JPY)",
-#           color = "Age class",
-#           title = paste(industry,"in", lubridate::year(year)),
-#           subtitle = paste("(", gender, size, "persons", school, ")")
-#         ) +
-#         guides(color = guide_legend(nrow=2)) +
-#         theme_classic() +
-#         theme(
-#           legend.position = "bottom",
-#           strip.background = element_blank()
-#         )
-#     )
-#   )
-# # # monitor a certain figure
-# line_seniority_summary_separated$figure[[1]]
-# # save the figure
-# # WARNING
-# # This process needs long computation period.
-# # TRY before RUN
-# pdf("line_seniority_summary_separated.pdf")
-# purrr::walk(
-#   line_seniority_summary_separated$figure,
-#   print
-#   )
-# dev.off()
+# ----- multiple.figures -----
+# Automated figure drawing using purrr::map() function
+line_seniority_summary_separated <-
+  data_seniority %>%
+  dplyr::mutate(
+    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
+    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
+  ) %>%
+  dplyr::group_by(type, gender, size,school, year, industry) %>%
+  tidyr::nest() %>%
+  dplyr::mutate(
+    figure = purrr::map(
+      data,
+      ~
+        ggplot2::ggplot(
+          data = .,
+          aes(
+            x = length_service,
+            y = value,
+            color = age_class,
+            group = age_class,
+            na.rm = TRUE
+          )
+        ) +
+        geom_point() +
+        geom_line() +
+        scale_color_smoothrainbow(discrete = TRUE) +
+        labs(
+          x = "Length of service (Unit: year)",
+          y = "Regular payment (Unit: 1,000JPY)",
+          color = "Age class",
+          title = paste(industry,"in", lubridate::year(year)),
+          subtitle = paste("(", gender, size, "persons", school, ")")
+        ) +
+        guides(color = guide_legend(nrow=2)) +
+        theme_classic() +
+        theme(
+          legend.position = "bottom",
+          strip.background = element_blank()
+        )
+    )
+  )
+# # monitor a certain figure
+line_seniority_summary_separated$figure[[1]]
+# save the figure
+# WARNING
+# This process needs long computation period.
+# TRY before RUN
+pdf("line_seniority_summary_separated.pdf")
+purrr::walk(
+  line_seniority_summary_separated$figure,
+  print
+  )
+dev.off()
 # 
 # ----- map.Japan. -----
 # read data
@@ -575,4 +632,3 @@ ggsave(
   # tips to use Japanese characters
   device = cairo_pdf
 )
-# 
