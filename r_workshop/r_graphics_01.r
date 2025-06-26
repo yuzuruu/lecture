@@ -14,6 +14,7 @@ library(khroma)
 library(viridis)
 # future::plan(multisession, workers = 16)
 library(gtsummary)
+
 # ID should be obtained from estatapi independently.
 # appID <- source("./r_workshop/appID.r")$value
 # # 
@@ -286,16 +287,16 @@ library(gtsummary)
 # https://github.com/yuzuruu/lecture/tree/yuzuru/r_workshop
 # data 1/4 
 junior <- 
-  readr::read_rds("seniority_data_tutorial_college.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_college.rds")
 # data 2/4 
 high <- 
-  readr::read_rds("seniority_data_tutorial_high.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_high.rds")
 # data 3/4 
 college <- 
-  readr::read_rds("seniority_data_tutorial_college.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_college.rds")
 # data 4/4 
 university <- 
-  readr::read_rds("seniority_data_tutorial_university.rds")
+  readr::read_rds("./r_workshop/seniority_data_tutorial_university.rds")
 # Combine the data altogether
 data_seniority <- 
   junior %>% 
@@ -432,51 +433,6 @@ ggsave(
   height = 180,
   units = "mm"
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # revise the initial line plot (part 2)
 line_seniority_summary_assignment <- 
   line_seniority_summary + 
@@ -559,110 +515,22 @@ purrr::walk(
   )
 dev.off()
 # 
-# ----- distribution -----
-# make a summary table
-data_seniority_summary <- 
-  data_seniority %>% 
-  dplyr::group_by(school, age_class, length_service) %>% 
-  dplyr::summarise(
-    N = sum(!is.na(value)),
-    Min. = min(value, na.rm = TRUE),
-    Mean = mean(value, na.rm = TRUE),
-    Median = median(value, na.rm = TRUE),
-    Max. = max(value, na.rm = TRUE),
-    SD = sd(value, na.rm = TRUE),
-    SE = sd(value, na.rm = TRUE)/(sqrt(n()))
-  )
-# another solution
-# make a summary table
-data_seniority_summary <- 
-  data_seniority %>% 
-  tidyr::drop_na(value) %>% 
-  dplyr::group_by(school, age_class, length_service) %>% 
-  dplyr::summarise(
-    N = n(),　# sample size
-    Min. = min(value), 
-    Mean = mean(value), # arithmetic mean
-    Median = median(value),
-    Max. = max(value),
-    SD = sd(value), # standard deviation
-    SE = sd(value)/(sqrt(n())) # standard error (deviation of mean)
-  )
-# save the results in csv format
-# The summary table is often too large to read all.
-readr::write_excel_csv(
-  data_seniority_summary,
-  "data_seniority_summary.csv"
-)
-# density plot
-data_seniority_summary_density <- 
-  data_seniority %>% 
-  dplyr::mutate(
-    length_service = factor(length_service, levels = c("0_years", "1-2", "3-4", "5-9", "10-14", "15-19", "20-24", "25-29", "over_30_years")),
-    age_class = factor(age_class, levels = c("under_19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "over_70"))
-    ) %>%
-  na.omit() %>% 
-  dplyr::group_by(age_class, length_service) %>% 
-  ggplot2::ggplot(
-    aes(
-      x = log(value),
-      color = school
-    )
-  ) +
-  # geom_density()　+
-  stat_density(geom = "line")　+
-  labs(
-    x = "Wage (Unit: 1,000JPY, log Trans.)",
-    y = "Density",
-    color = "School"
-  ) + 
-  scale_color_okabeito() +
-  facet_wrap(~ length_service + age_class, ncol = 12, scale = "free") +
-  theme_classic() +
-  theme(
-    strip.background = element_blank(),
-    legend.key = element_rect(fill = "transparent", colour = "transparent"),
-    legend.background = element_blank(),
-    legend.position = "bottom"
-  )
-# save the results
-ggsave(
-  "data_seniority_summary_density.pdf",
-  plot = data_seniority_summary_density,
-  # The size of graph area can be set in accordance with visibility.
-  width = 600,
-  height = 400,
-  units = "mm"
-)
-# make a table 1
-data_seniority_table1 <- 
-  data_seniority %>% 
-  na.omit() %>% 
-  dplyr::filter(
-    type == "regular_payment"
-  ) %>%
-  dplyr::select(gender, school, age_class, length_service, industry, size) %>% 
-  gtsummary::tbl_summary(
-    by = school
-  ) 
-data_seniority_table1
-# 
-# ----- map.Japan -----
+# ----- map.Japan. -----
 # read data
 # ssdse-a-2024
 # We download this data from SSDSE
 # (https://www.nstac.go.jp/use/literacy/ssdse/)
 ssdse <- 
   readxl::read_excel(
-  "./r_workshop/SSDSE-A-2024.xlsx",
-  skip = 2
+    "SSDSE-A-2024.xlsx",
+    skip = 2
   )
 # shapefiles
 # We download the data from GADM
 # (https://gadm.org/download_country.html)
 map_Japan <- 
   sf::st_read(
-    "./r_workshop/gadm41_JPN_shp/gadm41_JPN_2.shp"
+    "gadm41_JPN_2.shp"
   )
 # combine the data and shapefiles
 ssdse_map_JPN <- 
@@ -673,7 +541,12 @@ ssdse_map_JPN <-
   ) %>% 
   sf::st_as_sf()
 # Functions to split Okinawa prefecture
+# Okinawa locates distant area from others
+# To draw an organized map, we need to move
+# there. Normally, it is placed topleft area
+# of a map.
 # https://rpubs.com/ktgrstsh/775867
+# function to move Okinawa prefecture
 shift_okinawa <-
   function(data,
            col_pref = "都道府県",
@@ -681,7 +554,7 @@ shift_okinawa <-
            geometry = "geometry",
            zoom_rate = 3,
            pos = c(4.5, 17.5)
-           ) 
+           )
     {
     row_okinawa <- data[[col_pref]] == pref_value
     geo <- data[[geometry]][row_okinawa]
@@ -689,7 +562,8 @@ shift_okinawa <-
     geo2 <- (geo - cent) * zoom_rate + cent + pos
     data[[geometry]][row_okinawa] <- geo2
     return(sf::st_as_sf(data))
-    }
+  }
+# function to add lines between moved okinawa and others.
 layer_autoline_okinawa <- 
   function(
     x = c(129, 132.5, 138),
@@ -697,8 +571,8 @@ layer_autoline_okinawa <-
     y = c(40, 40, 42),
     yend = c(40, 42, 46),
     size = ggplot2::.pt / 15
-    )
-    {
+  )
+  {
     ggplot2::annotate(
       "segment",
       x = x,
@@ -707,7 +581,7 @@ layer_autoline_okinawa <-
       yend = yend,
       size = .pt / 15
     )
-    }
+  }
 # plot a map
 population_by_municipality <- 
   ssdse_map_JPN %>% 
@@ -718,18 +592,18 @@ population_by_municipality <-
     # zoom rate
     # 1: No zoom
     zoom_rate = 1
-    ) %>%
+  ) %>%
   ggplot() + 
   geom_sf(
     aes(
       # by switching the variable's name, we can change colors 
       # of the chroopleth map.
       fill = 総人口
-      ), 
+    ), 
     # No administrative boundaries' lines
     # When you need to draw the lines, change colors below.
     color = NA
-    ) + 
+  ) + 
   # change label of legend's name
   labs(
     fill = "Total Population (Unit: Persons)"
@@ -738,7 +612,8 @@ population_by_municipality <-
   layer_autoline_okinawa() + 
   # apply a color-universal-design-conforming color palette
   # based on khroma() package
-  scale_fill_iridescent() +
+  # scale_fill_iridescent() +
+  scale_fill_smoothrainbow() +
   # remove axes lines
   theme_void() +
   theme(
@@ -746,7 +621,7 @@ population_by_municipality <-
     legend.key.width = unit(10, "mm"),
     axis.title.x = element_blank(), 
     axis.title.y = element_blank()
-    )
+  )
 # save
 ggsave(
   "population_by_municipality.pdf",
@@ -757,244 +632,3 @@ ggsave(
   # tips to use Japanese characters
   device = cairo_pdf
 )
-# 
-# ----- Japan.Map -----
-# read data
-# We can download the data from the following.
-# https://www.nstac.go.jp/use/literacy/ssdse/#SSDSE-B
-Ssdse_2024 <- 
-  # read the data
-  # Before reading, upload the data onto RStudio server
-  readxl::read_excel(
-    "./r_workshop/SSDSE-B-2024.xlsx",
-    # ignore the first row
-    skip = 1
-    ) %>% 
-  # remove all characters 
-  # Instead of NA, the dataset use "-", resulting in malfunction.
-  dplyr::mutate(
-    across(
-      where(is.character),
-      ~ str_remove(.,"NA")
-      ),
-    地域コード = factor(地域コード),
-    都道府県 = factor(都道府県)
-    ) %>%
-  # transform the character data into numeric
-  dplyr::mutate(
-    across(where(is.character), as.numeric)
-  ) %>% 
-  tidyr::pivot_longer(
-    # select variables other than the 1st., 2nd, and 3rd. column
-    cols = c(-1,-2,-3),
-    names_to = "variable",
-    values_to = "number"
-  ) %>% 
-  # transform the character data into factor
-  dplyr::mutate(
-    across(where(is.character), factor)
-  ) %>% 
-  # reset variables' name
-  data.table::setnames(c("year","region_code","prefecture","variable","number")) %>% 
-  # select a certin variable
-  dplyr::filter(
-    year == 2021 & variable == "総人口"
-  )
-# read shapefiles
-# Using GADM, we can download the shapefiles
-Shapefiles_Japan <- 
-  sf::read_sf(
-    "./gadm41_JPN_shp/gadm41_JPN_1.shp"
-  )
-# draw a map
-Ssdse_Shapefiles <- 
-  Ssdse_2024 %>% 
-  dplyr::left_join(
-    Shapefiles_Japan,
-    by = c("prefecture" = "NL_NAME_1")
-  )
-# draw a map
-Ssdse_Map <- 
-  Ssdse_Shapefiles %>% 
-  ggplot2::ggplot(
-    aes(
-      geometry = geometry,
-      fill = number
-    )
-  ) +
-  geom_sf() +
-  labs(fill = "N. of persons (Unit: 1,000 pax)") +
-  scale_fill_smoothrainbow() +
-  theme_void()
-# 
-# multiple maps
-# 
-Ssdse_2024_01 <- 
-  # read the data
-  # Before reading, upload the data onto RStudio server
-  readxl::read_excel(
-    "./r_workshop/SSDSE-B-2024.xlsx",
-    # ignore the first row
-    skip = 1
-  ) %>% 
-  # remove all characters 
-  # Instead of NA, the dataset use "-", resulting in malfunction.
-  dplyr::mutate(
-    across(
-      where(is.character),
-      ~ str_remove(.,"NA")
-    ),
-    地域コード = factor(地域コード),
-    都道府県 = factor(都道府県)
-  ) %>%
-  # transform the character data into numeric
-  dplyr::mutate(
-    across(where(is.character), as.numeric)
-  ) %>% 
-  tidyr::pivot_longer(
-    # select variables other than the 1st., 2nd, and 3rd. column
-    cols = c(-1,-2,-3),
-    names_to = "variable",
-    values_to = "number"
-  ) %>% 
-  # transform the character data into factor
-  dplyr::mutate(
-    across(where(is.character), factor)
-  ) %>% 
-  # reset variables' name
-  data.table::setnames(c("year","region_code","prefecture","variable","number")) %>% 
-  # select a certin variable
-  # dplyr::filter(
-  #   year == 2021 & variable == "総人口"
-  # )
-  dplyr::filter(
-    year == 2021
-  )
-# 
-Ssdse_Shapefiles_01 <- 
-  Ssdse_2024_01 %>% 
-  dplyr::left_join(
-    Shapefiles_Japan,
-    by = c("prefecture" = "NL_NAME_1")
-  )
-# 
-Ssdse_Map_multiple_01 <- 
-  Ssdse_Shapefiles_01 %>% 
-  dplyr::group_by(variable) %>% 
-  nest() %>% 
-  dplyr::mutate(
-    figure = purrr::map(
-      data,
-      ~
-        ggplot2::ggplot(
-          data = .,
-          aes(
-            geometry = geometry,
-            fill = number
-          )
-        ) +
-        geom_sf() +
-        labs(fill = variable) +
-        scale_fill_smoothrainbow() +
-        theme_void()
-    )
-  )
-# make the maps of whole years
-Ssdse_2024_02 <- 
-  # read the data
-  # Before reading, upload the data onto RStudio server
-  readxl::read_excel(
-    "./r_workshop/SSDSE-B-2024.xlsx",
-    # ignore the first row
-    skip = 1
-  ) %>% 
-  # remove all characters 
-  # Instead of NA, the dataset use "-", resulting in malfunction.
-  dplyr::mutate(
-    across(
-      where(is.character),
-      ~ str_remove(.,"NA")
-    ),
-    地域コード = factor(地域コード),
-    都道府県 = factor(都道府県)
-  ) %>%
-  # transform the character data into numeric
-  dplyr::mutate(
-    across(where(is.character), as.numeric)
-  ) %>% 
-  # transform shape of data
-  tidyr::pivot_longer(
-    # select variables other than the 1st., 2nd, and 3rd. column
-    cols = c(-1,-2,-3),
-    names_to = "variable",
-    values_to = "number"
-  ) %>% 
-  # transform the character data into factor
-  dplyr::mutate(
-    dplyr::across(
-      where(is.character), 
-      factor
-      )
-  ) %>% 
-  # reset variables' name
-  data.table::setnames(c("year","region_code","prefecture","variable","number")) 
-# combine the reshaped SSDSE data set and the shapefiles 
-Ssdse_Shapefiles_02 <- 
-  Ssdse_2024_02 %>% 
-  dplyr::left_join(
-    Shapefiles_Japan,
-    by = c(
-      "prefecture" = "NL_NAME_1"
-      )
-  )
-# draw multiple maps by grouped variable
-Ssdse_Map_multiple_02 <- 
-  Ssdse_Shapefiles_02 %>% 
-  # convert the data into grouped one by variables
-  dplyr::group_by(variable) %>% 
-  # make a list by group
-  tidyr::nest() %>% 
-  # apply function to each element (group) 
-  dplyr::mutate(
-    figure = purrr::map(
-      # provide data
-      # (the function, "nest", makes a nested data set entitled "data")
-      data,
-      ~
-        # part of unnamed function
-        ggplot2::ggplot(
-          data = .,
-          aes(
-            geometry = geometry,
-            fill = number
-          ),
-          colour = NA
-        ) +
-        geom_sf() +
-        # wrap to make multiple figures by facets
-        facet_wrap(~ year) +
-        labs(fill = variable) +
-        scale_fill_smoothrainbow() +
-        theme_void() +
-        theme(
-          legend.position = "bottom",
-          legend.key.height= unit(2, 'mm'),
-          legend.key.width= unit(25, 'mm')
-        )
-    )
-  )
-# show an example of the figure
-Ssdse_Map_multiple_02$figure[[22]]
-# save one of the figure
-ggsave(
-  "Ssdse_Map_multiple_02.pdf",
-  # choose any of a figure by changing the number (22 this time).
-  # Also, the N. of variable is 109.
-  plot = Ssdse_Map_multiple_02$figure[[22]],
-  width = 450,
-  height = 300,
-  units = "mm",
-  # When Japanese phrases are included, device setting is necessary.
-  device = cairo_pdf
-)
-
